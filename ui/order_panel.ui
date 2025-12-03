@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>OrderPanel</class>
+ <widget class="QWidget" name="OrderPanel">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>284</width>
+    <height>512</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>280</width>
+    <height>500</height>
+   </size>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,1,0,0,0,0">
+   <item>
+    <layout class="QHBoxLayout" name="symbolPriceLayout">
+     <item>
+      <widget class="QLabel" name="labelSymbol">
+       <property name="styleSheet">
+        <string notr="true">font-size:18px; font-weight:600;</string>
+       </property>
+       <property name="text">
+        <string>BTCUSDT</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="labelPrice">
+       <property name="styleSheet">
+        <string notr="true">font-size:18px; font-weight:600; color:#ffd54f;</string>
+       </property>
+       <property name="text">
+        <string>0.00</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="positionGrid">
+     <item row="0" column="0">
+      <widget class="QLabel" name="labelPosQty">
+       <property name="text">
+        <string>Position:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="valuePosQty">
+       <property name="styleSheet">
+        <string notr="true">color:#4fc3f7; font-weight:500;</string>
+       </property>
+       <property name="text">
+        <string>0</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="labelAvgPrice">
+       <property name="text">
+        <string>Avg Price:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLabel" name="valueAvgPrice">
+       <property name="text">
+        <string>0.00</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="typeLayout">
+     <item>
+      <widget class="QLabel" name="labelType">
+       <property name="text">
+        <string>Order Type</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="comboType">
+       <item>
+        <property name="text">
+         <string>Market</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Limit</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="priceLayout">
+     <item>
+      <widget class="QLabel" name="labelOrderPrice">
+       <property name="text">
+        <string>Price</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="editOrderPrice">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="placeholderText">
+        <string>Market Price</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="qtyLayout">
+     <item>
+      <widget class="QLabel" name="labelQty">
+       <property name="text">
+        <string>Qty</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="editQty">
+       <property name="text">
+        <string>1</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnQtyMinus">
+       <property name="text">
+        <string>-</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnQtyPlus">
+       <property name="text">
+        <string>+</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="qtyMultiLayout">
+     <item>
+      <widget class="QPushButton" name="btnQtyHalf">
+       <property name="text">
+        <string>÷2</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnQtyDouble">
+       <property name="text">
+        <string>x2</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="btnLayout">
+     <item>
+      <widget class="QPushButton" name="btnBuy">
+       <property name="styleSheet">
+        <string notr="true">
+            background-color:#2ecc71;
+            font-size:20px;
+            font-weight:bold;
+            padding:10px;
+        </string>
+       </property>
+       <property name="text">
+        <string>BUY</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnSell">
+       <property name="styleSheet">
+        <string notr="true">
+            background-color:#e74c3c;
+            font-size:20px;
+            font-weight:bold;
+            padding:10px;
+        </string>
+       </property>
+       <property name="text">
+        <string>SELL</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTextEdit" name="textLog">
+     <property name="styleSheet">
+      <string notr="true">font-size:12px; background:#202020; color:#cccccc;</string>
+     </property>
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
