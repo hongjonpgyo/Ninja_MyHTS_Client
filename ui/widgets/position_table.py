@@ -6,6 +6,9 @@ class PositionsTable:
     def __init__(self, table):
         self.table = table
 
+    async def refresh(self):
+        return
+
     def render(self, data):
         rows = len(data)
         self.table.setRowCount(rows)

@@ -1,23 +1,23 @@
+# main.py
 import sys
-import asyncio
+import qasync
 from PyQt6.QtWidgets import QApplication
-from qasync import QEventLoop
+import asyncio
 
 from ui.main_window import MainWindow
 
-
-def run():
+def main():
     app = QApplication(sys.argv)
 
-    loop = QEventLoop(app)
+    # 🔥 asyncio 이벤트 루프와 PyQt 이벤트루프 통합
+    loop = qasync.QEventLoop(app)
     asyncio.set_event_loop(loop)
 
     w = MainWindow()
-    w.show()   # 🔥 아주 중요
+    w.show()
 
     with loop:
         loop.run_forever()
 
-
 if __name__ == "__main__":
-    run()
+    main()

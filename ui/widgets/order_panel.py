@@ -1,8 +1,6 @@
-# 주문 화면 패널
-# widgets/order_panel.py
+# ui/widgets/order_panel.py
 from PyQt6.QtWidgets import QWidget
 from PyQt6.uic import loadUi
-from services.api_client import APIClient
 
 
 class OrderPanel(QWidget):
@@ -11,20 +9,16 @@ class OrderPanel(QWidget):
         super().__init__(parent)
         loadUi("ui/order_panel.ui", self)
 
-        self.api = APIClient()
-        self.account_id = 1  # 기본 계좌
+        # 버튼 연결은 MainWindow에서 처리
+        # 여기서는 버튼 자체만 제공
 
-        self.btnBuy.clicked.connect(self._on_buy)
-        self.btnSell.clicked.connect(self._on_sell)
+    def get_qty(self) -> float:
+        """수량(Qty) 가져오기 (실패 시 0 반환)"""
+        try:
+            return float(self.editQty.text())
+        except:
+            return 0
 
-    def _on_buy(self):
-        qty = float(self.editQty.text())
-        symbol = self.parent().current_symbol
-        res = self.api.place_market(self.account_id, symbol, "BUY", qty)
-        print("BUY Result:", res)
-
-    def _on_sell(self):
-        qty = float(self.editQty.text())
-        symbol = self.parent().current_symbol
-        res = self.api.place_market(self.account_id, symbol, "SELL", qty)
-        print("SELL Result:", res)
+    def set_symbol(self, symbol: str):
+        """심볼 변경 시 UI 업데이트 (필요 시 확장)"""
+        self.labelSymbol.setText(symbol)
