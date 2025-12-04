@@ -1,5 +1,6 @@
 # ui/main_window.py
 import asyncio
+from PyQt6 import QtWidgets, QtCore
 from PyQt6.QtWidgets import QMainWindow, QMessageBox
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer
@@ -9,6 +10,9 @@ from ui.widgets.order_panel import OrderPanel
 from ui.widgets.position_table import PositionsTable
 from services.ws_client import PriceWSClient, DepthWSClient
 from services.api_client import APIClient
+from ui.widgets.balance_widget import BalanceWidget
+from api.account_api import AccountApi
+from api.position_api import PositionApi
 
 
 class MainWindow(QMainWindow):
@@ -16,6 +20,12 @@ class MainWindow(QMainWindow):
     def __init__(self, api_client: APIClient, show_login_window_callback):
         super().__init__()
         loadUi("ui/main_window.ui", self)
+
+        self.account_api = AccountApi()
+        self.position_api = PositionApi()
+
+        self.balance_widget = BalanceWidget()
+        self.position_table = PositionsTable(self)
 
         self.current_symbol = "BTCUSDT"
         self.ws = None
@@ -48,8 +58,13 @@ class MainWindow(QMainWindow):
         self.positions_table = PositionsTable(self.tablePositions)
 
         # 심볼
+        # --- 심볼 콤보 초기화 (신호 차단) ---
+        self.symbolCombo.blockSignals(True)
+        self.symbolCombo.clear()
         self.symbolCombo.addItems(["BTCUSDT", "ETHUSDT", "SOLUSDT"])
-        self.symbolCombo.setCurrentText("BTCUSDT")
+        self.symbolCombo.setCurrentText(self.current_symbol)
+        self.symbolCombo.blockSignals(False)
+
         self.symbolCombo.currentTextChanged.connect(self.change_symbol)
 
         self.ws_started = False
@@ -91,7 +106,7 @@ class MainWindow(QMainWindow):
 
     async def start_price_ws(self):
         if self.ws:
-            self.ws.is_running = False
+            await self.ws.stop()
 
         print("[WS] PriceWS start:", self.current_symbol)
         self.ws = PriceWSClient(self.current_symbol, self.update_price)
@@ -100,7 +115,7 @@ class MainWindow(QMainWindow):
 
     async def start_depth_ws(self):
         if self.depth_client:
-            self.depth_client.is_running = False
+            await self.depth_client.stop()
 
         print("[WS] DepthWS start:", self.current_symbol)
         self.depth_client = DepthWSClient(
@@ -109,17 +124,28 @@ class MainWindow(QMainWindow):
         )
         asyncio.create_task(self.depth_client.connect())
 
+    def change_symbol(self, symbol: str):
+        symbol = symbol.upper()
+        if symbol == self.current_symbol:
+            # 동일 심볼이면 아무 것도 안 함 (무한 루프 방지)
+            return
 
-    def change_symbol(self, symbol):
-        print("[UI] Symbol changed:", symbol)
+        print("[UI] Symbol changed:", self.current_symbol, "→", symbol)
         self.current_symbol = symbol
 
-        self.symbolLabel.setText(symbol)
+        # 여기서 symbolCombo.setCurrentText(...) 는 절대 호출하지 말기!
+        # self.symbolCombo.setCurrentText(symbol)  <-- 이거 하면 시그널 또 발생해서 루프 됨
+
+        # 상단 라벨 / 패널 업데이트
+        # self.symbolLabel.setText(symbol)
         self.order_panel.set_symbol(symbol)
 
-        asyncio.create_task(self.start_price_ws())
-        asyncio.create_task(self.start_depth_ws())
+        # 🔥 스트림 재시작 (기존 것 stop 후 새로)
+        asyncio.create_task(self.restart_streams())
 
+    async def restart_streams(self):
+        await self.start_price_ws()
+        await self.start_depth_ws()
 
     def update_price(self, data):
         last = data.get("last")
@@ -136,9 +162,10 @@ class MainWindow(QMainWindow):
             await self.positions_table.refresh()
             await asyncio.sleep(1)
 
+        # ui/main_window.py
 
     async def place_order(self, side):
-        """BUY/SELL 주문 실행 (qty 내부에서 가져옴)"""
+        """BUY/SELL 주문 실행"""
 
         try:
             qty = self.order_panel.get_qty()
@@ -158,8 +185,20 @@ class MainWindow(QMainWindow):
             )
             print("ORDER RESULT:", result)
 
+            if not result or not result.get("ok", False):
+                # 백엔드 에러 메시지 뽑기
+                err = result.get("error")
+                if isinstance(err, dict) and "detail" in err:
+                    msg = str(err["detail"])
+                else:
+                    msg = str(err)
+                QMessageBox.warning(self, "Order Error", msg)
+                return
+
+            # ⬇ 여기까지 오면 성공
             QMessageBox.information(self, "Order", f"{side} 주문 완료!")
 
+            # 포지션 테이블 갱신
             asyncio.create_task(self.positions_table.refresh())
 
         except Exception as e:
@@ -184,10 +223,26 @@ class MainWindow(QMainWindow):
         # LoginWindow 다시 띄우기
         self.show_login_window_callback()
 
+    def refresh_all(self):
+        balance = self.account_api.get_balance(self.account_id)
+        self.balance_widget.update_balance(balance)
+
+        positions = self.position_api.get_my_positions(self.account_id)
+        self.position_table.update_positions(positions)
+
+    def on_close_position(self, position_id):
+        res = self.position_api.close(position_id)
+        if res and res.get("ok"):
+            QMessageBox.information(self, "Close", "Position closed!")
+            self.refresh_all()
+        else:
+            QMessageBox.warning(self, "Error", "Close failed")
 
     def closeEvent(self, event):
+        loop = asyncio.get_event_loop()
         if self.ws:
-            self.ws.stop()
+            loop.create_task(self.ws.stop())
         if self.depth_client:
-            self.depth_client.stop()
+            loop.create_task(self.depth_client.stop())
         event.accept()
+

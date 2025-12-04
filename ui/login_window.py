@@ -15,6 +15,9 @@ class LoginWindow(QDialog):
 
         self.btnLogin.clicked.connect(self._on_login_clicked)
 
+        self.editEmail.setText('admin@admin.com')
+        self.editPassword.setText('admin')
+
     def _on_login_clicked(self):
         asyncio.create_task(self._do_login())    # ✅ 코루틴 객체 전달
 
