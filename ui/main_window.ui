@@ -60,6 +60,16 @@
         </property>
        </spacer>
       </item>
+       <item>
+        <widget class="QPushButton" name="btnLogout">
+         <property name="text">
+            <string>로그아웃</string>
+         </property>
+         <property name="styleSheet">
+            <string notr="true">background:#555; color:white; padding:5px;</string>
+         </property>
+        </widget>
+      </item>
      </layout>
     </item>
     <item>

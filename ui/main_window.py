@@ -13,15 +13,19 @@ from services.api_client import APIClient
 
 class MainWindow(QMainWindow):
 
-    def __init__(self):
+    def __init__(self, api_client: APIClient, show_login_window_callback):
         super().__init__()
         loadUi("ui/main_window.ui", self)
 
         self.current_symbol = "BTCUSDT"
         self.ws = None
         self.depth_client = None
+        self.user = None
+        self.accounts = None
+        self.account_id = None
 
-        self.api = APIClient()
+        self.api = api_client
+        self.show_login_window_callback = show_login_window_callback
 
         # 주문 패널
         self.order_panel = OrderPanel(self)
@@ -35,6 +39,8 @@ class MainWindow(QMainWindow):
             lambda: self.safe_async(self.place_order("SELL"))
         )
 
+        self.btnLogout.clicked.connect(self.logout)
+
         # 오더북
         self.orderbook = OrderbookWidget(self.tableOrderbook)
 
@@ -47,6 +53,18 @@ class MainWindow(QMainWindow):
         self.symbolCombo.currentTextChanged.connect(self.change_symbol)
 
         self.ws_started = False
+
+    def init_user(self, token: str, user, account_id : int):
+        self.api.set_token(token)
+        self.user = user
+
+        # 기본 계좌 선택
+        self.account_id = account_id
+
+        # self.labelUser.setText(f"{user['name']} ({user['email']})")
+        # self.labelAccount.setText(f"계좌번호: {self.account_id}")
+
+        self.show()
 
 
     def safe_async(self, coro):
@@ -128,8 +146,12 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Error", "수량이 올바르지 않습니다.")
                 return
 
+            if self.account_id is None:
+                QMessageBox.warning(self, "Error", "계좌 정보가 없습니다. 먼저 로그인 해 주세요.")
+                return
+
             result = await self.api.order_market(
-                account_id=1,
+                account_id=self.account_id,
                 symbol=self.current_symbol,
                 side=side,
                 qty=qty,
@@ -143,6 +165,24 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print("[ORDER ERROR]", e)
             QMessageBox.warning(self, "Order Error", str(e))
+
+    def logout(self):
+        """로그아웃 → LoginWindow 다시 표시"""
+        try:
+            # API 토큰 초기화
+            self.api.token = None
+            self.api.user_id = None
+            self.api.account_id = None
+        except:
+            pass
+
+        print("[LOGOUT] 로그아웃 실행")
+
+        # 현재 창 닫기
+        self.close()
+
+        # LoginWindow 다시 띄우기
+        self.show_login_window_callback()
 
 
     def closeEvent(self, event):
