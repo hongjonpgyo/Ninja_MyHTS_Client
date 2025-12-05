@@ -46,3 +46,8 @@ class OrderbookWidget:
                 self.table.item(i, 2).setText(f"{size:,.3f}")
             else:
                 self.table.item(i, 2).setText("")
+
+    def clear(self):
+        """심볼 변경 시 기존 데이터 삭제"""
+        self.table.clearContents()
+        self.table.setRowCount(0)

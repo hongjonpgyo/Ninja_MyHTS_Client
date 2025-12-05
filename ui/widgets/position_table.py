@@ -1,20 +1,33 @@
-# 포지션 테이블
 # widgets/positions_table.py
-from PyQt6.QtWidgets import QTableWidgetItem
+from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QAbstractItemView
 
-class PositionsTable:
-    def __init__(self, table):
-        self.table = table
+class PositionsTable(QTableWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
-    async def refresh(self):
-        return
+        # 컬럼 정의
+        self.setColumnCount(6)
+        self.setHorizontalHeaderLabels([
+            "Symbol", "Side", "Qty",
+            "Entry", "PnL", "Liq"
+        ])
+
+        # 🔥 PyQt6 스타일의 Edit Block
+        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+
+        self.verticalHeader().setVisible(False)
+        self.setAlternatingRowColors(True)
+
 
     def render(self, data):
+        """data: [{symbol, side, qty, entry_price, unrealized_pnl, liq_price}, ...]"""
         rows = len(data)
-        self.table.setRowCount(rows)
+        self.setRowCount(rows)
 
         for r, row in enumerate(data):
-            self.table.setItem(r, 0, QTableWidgetItem(row["symbol"]))
-            self.table.setItem(r, 1, QTableWidgetItem(str(row["qty"])))
-            self.table.setItem(r, 2, QTableWidgetItem(str(row["entry_price"])))
-            self.table.setItem(r, 3, QTableWidgetItem(str(row["unrealized_pnl"])))
+            self.setItem(r, 0, QTableWidgetItem(row["symbol"]))
+            self.setItem(r, 1, QTableWidgetItem(row.get("side", "")))
+            self.setItem(r, 2, QTableWidgetItem(str(row["qty"])))
+            self.setItem(r, 3, QTableWidgetItem(str(row["entry_price"])))
+            self.setItem(r, 4, QTableWidgetItem(str(row["unrealized_pnl"])))
+            self.setItem(r, 5, QTableWidgetItem(str(row.get("liq_price", ""))))

@@ -29,16 +29,31 @@ class BalanceWidget(QtWidgets.QWidget):
         self.setLayout(grid)
 
     def update_balance(self, data: dict):
-        self.equity.setText(f"{data['equity']:,}")
-        self.free_margin.setText(f"{data['free_margin']:,}")
-        self.used_margin.setText(f"{data['used_margin']:,}")
+        try:
+            equity = float(data.get("balance", 0))
+            margin_free = float(data.get("margin_available", 0))
+            margin_used = float(data.get("margin_used", 0))
+            pnl_realized = float(data.get("pnl_realized", 0))
+            pnl_unrealized = float(data.get("pnl_unrealized", 0))
 
-        rp = data["realized_pnl"]
-        up = data["unrealized_pnl"]
+            # 숫자 포맷 적용
+            self.equity.setText(f"{equity:,.2f}")
+            self.free_margin.setText(f"{margin_free:,.2f}")
+            self.used_margin.setText(f"{margin_used:,.2f}")
+            self.realized_pnl.setText(f"{pnl_realized:,.2f}")
+            self.unrealized_pnl.setText(f"{pnl_unrealized:,.2f}")
 
-        self.realized_pnl.setText(f"{rp:+,.2f}")
-        self.unrealized_pnl.setText(f"{up:+,.2f}")
+            # 색상 처리 (Realized PnL)
+            if pnl_realized >= 0:
+                self.realized_pnl.setStyleSheet("color: #4CAF50;")
+            else:
+                self.realized_pnl.setStyleSheet("color: #F44336;")
 
-        # 색상 적용
-        self.realized_pnl.setStyleSheet("color: green;" if rp >= 0 else "color: red;")
-        self.unrealized_pnl.setStyleSheet("color: green;" if up >= 0 else "color: red;")
+            # 색상 처리 (Unrealized PnL)
+            if pnl_unrealized >= 0:
+                self.unrealized_pnl.setStyleSheet("color: #4CAF50;")
+            else:
+                self.unrealized_pnl.setStyleSheet("color: #F44336;")
+
+        except Exception as e:
+            print("[BalanceWidget] Update Error:", e)

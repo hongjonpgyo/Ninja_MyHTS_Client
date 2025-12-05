@@ -93,14 +93,14 @@ class APIClient:
             print("[API ERROR]", e)
             return {"ok": False, "error": str(e)}
 
-    def get_positions(self, account_id: int):
-        return self.get(f"{REST_URL}/positions/{account_id}").json()
+    async def get_positions(self, account_id: int):
+        return await self.get(f"{REST_URL}/positions/{account_id}")
 
     def get_executions(self, account_id: int):
         return self.get(f"{REST_URL}/executions/{account_id}").json()
 
     def get_account(self, account_id: int):
-        return self.get(f"{REST_URL}/accounts/{account_id}").json()
+        return self.get(f"{REST_URL}/accounts/{account_id}")
 
     async def login(self, email, password):
         try:
