@@ -29,7 +29,7 @@ class LoginWindow(QDialog):
             login_res = await self.api.login(email, password)
 
             if "access_token" in login_res:
-                QMessageBox.information(self, "Login", "로그인 성공!")
+                # QMessageBox.information(self, "Login", "로그인 성공!")
 
                 # 🔥 이 값을 MainWindow로 전달해야 함
                 token = login_res["access_token"]
