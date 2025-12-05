@@ -4,6 +4,7 @@ import httpx
 from config.settings import REST_URL
 
 
+
 class APIClient:
     def __init__(self):
         self.base_url = REST_URL
