@@ -129,7 +129,6 @@ class MainWindow(QMainWindow):
         if symbol == self.current_symbol:
             # 동일 심볼이면 아무 것도 안 함 (무한 루프 방지)
             return
-
         print("[UI] Symbol changed:", self.current_symbol, "→", symbol)
         self.current_symbol = symbol
 
