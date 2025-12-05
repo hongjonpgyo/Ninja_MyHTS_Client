@@ -120,7 +120,6 @@ class PriceWSClient:
             except Exception as e:
                 print(f"[WS RECV ERROR] {e}")
                 break
-
         print("[WS] receive_loop 종료")
 
     async def stop(self):
