@@ -83,3 +83,18 @@ class ExecutionsTable(QtWidgets.QTableWidget):
             item = self.item(row, col)
             if item:
                 item.setBackground(QtGui.QColor("#FFFFFF"))
+
+    def append_row(self, ex: dict):
+        row = self.rowCount()
+        self.insertRow(row)
+
+        self._set_item(row, 0, ex["created_at"])
+        self._set_item(row, 1, ex["symbol"])
+        self._set_item(row, 2, ex["side"])
+        self._set_item(row, 3, ex["price"])
+        self._set_item(row, 4, ex["qty"])
+        self._set_item(row, 5, ex.get("fee", 0))
+        self._set_item(row, 6, ex.get("type", "AUTO"))
+
+        self._color_side(row, ex["side"])
+        self._highlight_new_row(row)

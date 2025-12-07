@@ -143,3 +143,53 @@ class PriceWSClient:
 
         self.task = None
         self.ws = None
+
+
+# services/ws_client.py
+import websockets
+import asyncio
+import json
+
+class ExecutionWSClient:
+    def __init__(self, account_id, callback):
+        self.account_id = account_id
+        self.callback = callback
+        self.running = True
+
+    async def start(self):
+        url = f"ws://127.0.0.1:9000/ws/executions/{self.account_id}"
+
+        while self.running:
+            try:
+                async with websockets.connect(url) as ws:
+                    print("[ExecWS] Connected")
+
+                    while True:
+                        msg = await ws.recv()
+                        data = json.loads(msg)
+                        self.callback(data)
+
+            except Exception as e:
+                print("[ExecWS ERROR]", e)
+                await asyncio.sleep(1)
+
+    async def stop(self):
+        self.running = False
+
+class AccountWSClient:
+    def __init__(self, account_id, on_update):
+        self.url = f"ws://127.0.0.1:9000/ws/account/{account_id}"
+        self.on_update = on_update
+        self.running = True
+
+    async def start(self):
+        print(self.url)
+        async with websockets.connect(self.url) as ws:
+            while self.running:
+                msg = await ws.recv()
+                data = json.loads(msg)
+                self.on_update(data)
+
+    async def stop(self):
+        self.running = False
+

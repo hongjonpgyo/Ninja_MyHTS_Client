@@ -11,9 +11,10 @@ from ui.widgets.position_table import PositionsTable
 from ui.widgets.balance_widget import BalanceWidget
 from ui.widgets.OpenOrdersWidget import OpenOrdersWidget
 from ui.widgets.executions_table import ExecutionsTable
+from ui.widgets.toast import ToastMessage
 
 from services.api_client import APIClient
-from services.ws_client import PriceWSClient
+from services.ws_client import PriceWSClient, ExecutionWSClient, AccountWSClient
 
 from api.account_api import AccountApi
 from api.position_api import PositionApi
@@ -88,12 +89,25 @@ class MainWindow(QMainWindow):
         self.start_async_tasks()
         self.show()
 
+        self.exec_ws = ExecutionWSClient(
+            account_id,
+            self.safe_ui_handle_execution
+        )
+        asyncio.create_task(self.exec_ws.start())
+
+        self.account_ws = AccountWSClient(
+            account_id,
+            self.safe_ui_update_account_ws
+        )
+        asyncio.create_task(self.account_ws.start())
+
     # ======================================================
     # 안전한 UI 업데이트 함수
     # ======================================================
-    def safe_ui(self, func, *args):
-        QTimer.singleShot(0, lambda: func(*args))
-
+    def safe_ui(self, func, *args, **kwargs):
+        def wrapper():
+            func(*args, **kwargs)
+        QTimer.singleShot(0, wrapper)
 
     # ======================================================
     # 시작 시 실행할 작업들
@@ -149,8 +163,8 @@ class MainWindow(QMainWindow):
         while self.running:
             try:
                 await self.fetch_orderbook()
-                await self.fetch_positions()
-                await self.fetch_balance()
+                # await self.fetch_positions()
+                # await self.fetch_balance()
                 await self.fetch_open_orders()
                 await self.fetch_executions()
             except Exception as e:
@@ -287,6 +301,37 @@ class MainWindow(QMainWindow):
             print("[ORDER ERROR]", e)
             self.safe_ui(lambda: QMessageBox.warning(self, "Order Error", str(e)))
 
+    def safe_ui_update_account_ws(self, data):
+        if data["type"] == "account_update":
+            self.positions_table.render(data["positions"])
+            self.balance_widget.update_balance(data["account"])
+
+
+    # 실시간 체결 수신
+    def safe_ui_handle_execution(self, data):
+
+        def _update():
+            # 1) Executions table append
+            self.executions_table.append_row(data)
+
+            # 2) OpenOrders 자동 갱신
+            asyncio.create_task(self.fetch_open_orders())
+
+            # 3) 알림 팝업 (옵션)
+            # QMessageBox.information(
+            #     self,
+            #     "체결 알림",
+            #     f"{data['symbol']} {data['side']} {data['qty']} @ {data['price']}"
+            # )
+            # 🔥 Toast 알림 추가
+            self.show_toast(f"{data['symbol']} {data['side']} {data['qty']} @ {data['price']} 체결")
+
+        self.safe_ui(_update)
+
+    def show_toast(self, text: str):
+        toast = ToastMessage(self, text)
+        toast.adjustSize()
+        toast.show_toast()
 
     # ======================================================
     # 로그아웃 처리

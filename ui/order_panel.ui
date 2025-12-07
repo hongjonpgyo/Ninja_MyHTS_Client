@@ -17,7 +17,6 @@
    </size>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,1,0,0,0,0">
-   <!-- 심볼 / 현재가 -->
    <item>
     <layout class="QHBoxLayout" name="symbolPriceLayout">
      <item>
@@ -42,14 +41,12 @@
      </item>
     </layout>
    </item>
-
-   <!-- 포지션 정보 -->
    <item>
     <layout class="QGridLayout" name="positionGrid">
      <item row="0" column="0">
       <widget class="QLabel" name="labelPosQty">
        <property name="text">
-        <string>포지션 수량:</string>
+        <string>Position:</string>
        </property>
       </widget>
      </item>
@@ -66,7 +63,7 @@
      <item row="1" column="0">
       <widget class="QLabel" name="labelAvgPrice">
        <property name="text">
-        <string>평균 단가:</string>
+        <string>Avg Price:</string>
        </property>
       </widget>
      </item>
@@ -79,14 +76,12 @@
      </item>
     </layout>
    </item>
-
-   <!-- 주문 타입 -->
    <item>
     <layout class="QHBoxLayout" name="typeLayout">
      <item>
       <widget class="QLabel" name="labelType">
        <property name="text">
-        <string>주문 종류</string>
+        <string>Order Type</string>
        </property>
       </widget>
      </item>
@@ -106,14 +101,12 @@
      </item>
     </layout>
    </item>
-
-   <!-- 가격 입력 -->
    <item>
     <layout class="QHBoxLayout" name="priceLayout">
      <item>
       <widget class="QLabel" name="labelOrderPrice">
        <property name="text">
-        <string>가격</string>
+        <string>Price</string>
        </property>
       </widget>
      </item>
@@ -123,20 +116,18 @@
         <bool>false</bool>
        </property>
        <property name="placeholderText">
-        <string>Market 주문 시 자동</string>
+        <string>Market Price</string>
        </property>
       </widget>
      </item>
     </layout>
    </item>
-
-   <!-- 수량 입력 -->
    <item>
     <layout class="QHBoxLayout" name="qtyLayout">
      <item>
       <widget class="QLabel" name="labelQty">
        <property name="text">
-        <string>수량</string>
+        <string>Qty</string>
        </property>
       </widget>
      </item>
@@ -163,8 +154,6 @@
      </item>
     </layout>
    </item>
-
-   <!-- 수량 ÷2 / x2 -->
    <item>
     <layout class="QHBoxLayout" name="qtyMultiLayout">
      <item>
@@ -183,8 +172,6 @@
      </item>
     </layout>
    </item>
-
-   <!-- 매수 / 매도 버튼 -->
    <item>
     <layout class="QHBoxLayout" name="btnLayout">
      <item>
@@ -198,7 +185,7 @@
         </string>
        </property>
        <property name="text">
-        <string>매수</string>
+        <string>BUY</string>
        </property>
       </widget>
      </item>
@@ -213,14 +200,12 @@
         </string>
        </property>
        <property name="text">
-        <string>매도</string>
+        <string>SELL</string>
        </property>
       </widget>
      </item>
     </layout>
    </item>
-
-   <!-- 로그 영역 -->
    <item>
     <widget class="QTextEdit" name="textLog">
      <property name="styleSheet">
