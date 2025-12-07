@@ -72,19 +72,31 @@ class DepthWSClient:
 # ============================================================
 # PRICE WEBSOCKET CLIENT
 # ============================================================
+# services/ws_client.py
+import asyncio
+import json
+import websockets
+from PyQt6.QtCore import QTimer
+
+
 class PriceWSClient:
     def __init__(self, symbol: str, callback):
         self.symbol = symbol.lower()
         self.callback = callback
         self.running = False
         self.ws = None
+        self.task = None
 
-    async def connect(self):
-        """백엔드 Price WS 연결 루프"""
+    async def start(self):
+        """qasync 기반에서 안전하게 WS 시작"""
+        await self.stop()          # 기존 소켓 정리
+        self.running = True
+        self.task = asyncio.create_task(self.run())
+
+    async def run(self):
+        """독립 실행 루프"""
         url = f"ws://127.0.0.1:9000/ws/price/{self.symbol}"
         print(f"[PriceWS] Connect → {url}")
-
-        self.running = True
 
         while self.running:
             try:
@@ -92,42 +104,42 @@ class PriceWSClient:
                     self.ws = ws
                     print("[PriceWS] Connected")
 
-                    await self.receive_loop()
+                    while self.running:
+                        try:
+                            msg = await ws.recv()
+                            data = json.loads(msg)
+                            QTimer.singleShot(0, lambda d=data: self.callback(d))
+                        except Exception as e:
+                            print("[PriceWS recv error]", e)
+                            break
+
+            except asyncio.CancelledError:
+                print("[PriceWS] cancelled")
+                break
 
             except Exception as e:
-                if not self.running:
-                    break
                 print("[PriceWS ERROR]", e)
 
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.3)
 
         print("[PriceWS] 종료됨")
 
-    async def receive_loop(self):
-        while self.running:
-            try:
-                msg = await asyncio.wait_for(self.ws.recv(), timeout=1.0)
-                data = json.loads(msg)
-
-                QTimer.singleShot(0, lambda d=data: self.callback(d))
-
-            except asyncio.TimeoutError:
-                continue
-            except websockets.ConnectionClosed:
-                break
-            except Exception as e:
-                print("[PriceWS RECV ERROR]", e)
-                break
-
     async def stop(self):
-        """WS 완전 종료"""
-        print("[PriceWS] STOP 요청")
+        """WS 종료"""
         self.running = False
 
-        try:
-            if self.ws:
-                await self.ws.close()
-        except:
-            pass
+        if self.task:
+            self.task.cancel()
+            try:
+                await self.task
+            except:
+                pass
 
+        if self.ws:
+            try:
+                await self.ws.close()
+            except:
+                pass
+
+        self.task = None
         self.ws = None

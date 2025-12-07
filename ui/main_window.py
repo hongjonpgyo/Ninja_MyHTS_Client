@@ -3,24 +3,25 @@ import asyncio
 from PyQt6.QtWidgets import QMainWindow, QMessageBox
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer
+from PyQt6.uic.Compiler.qtproxies import QtWidgets
 
 from ui.widgets.orderbook_widget import OrderbookWidget
 from ui.widgets.order_panel import OrderPanel
 from ui.widgets.position_table import PositionsTable
 from ui.widgets.balance_widget import BalanceWidget
+from ui.widgets.OpenOrdersWidget import OpenOrdersWidget
+from ui.widgets.executions_table import ExecutionsTable
 
-from services.ws_client import PriceWSClient, DepthWSClient
 from services.api_client import APIClient
+from services.ws_client import PriceWSClient
 
 from api.account_api import AccountApi
 from api.position_api import PositionApi
+from api.order_api import OrderApi
 
 
 class MainWindow(QMainWindow):
 
-    # -------------------------------------------------------
-    # 1) 초기화
-    # -------------------------------------------------------
     def __init__(self, api_client: APIClient, show_login_window_callback):
         super().__init__()
         loadUi("ui/main_window.ui", self)
@@ -29,18 +30,20 @@ class MainWindow(QMainWindow):
         self.api = api_client
         self.account_api = AccountApi()
         self.position_api = PositionApi()
+        self.order_api = OrderApi()
 
-        # 상태 값
+        # State
         self.user = None
         self.account_id = None
         self.current_symbol = "BTCUSDT"
-        self.ws = None
-        self.depth_client = None
-        self.ws_started = False
 
-        # ---------------------------------------------------
-        # UI 컴포넌트 연결
-        # ---------------------------------------------------
+        self.ws = None
+        self.ws_task = None
+        self.bg_task = None  # background loop task
+
+        self.running = True  # 전체 윈도우 동작 제어
+
+        # UI Setup
         self.order_panel = OrderPanel(self)
         self.orderPanelLayout.addWidget(self.order_panel)
 
@@ -48,127 +51,86 @@ class MainWindow(QMainWindow):
         self.positions_table = PositionsTable(self.tablePositions)
         self.balance_widget = BalanceWidget()
 
-        # 주문 버튼
-        self.order_panel.btnBuy.clicked.connect(
-            lambda: self.safe_async(self.place_order("BUY"))
-        )
-        self.order_panel.btnSell.clicked.connect(
-            lambda: self.safe_async(self.place_order("SELL"))
-        )
+        self.executions_table = ExecutionsTable()  # 새 테이블 생성
+        self.executionsLayout.addWidget(self.executions_table)
 
-        # 로그아웃
+        self.order_panel.btnBuy.clicked.connect(lambda: self.on_order_click("BUY"))
+        self.order_panel.btnSell.clicked.connect(lambda: self.on_order_click("SELL"))
+
         self.btnLogout.clicked.connect(self.logout)
-        self.show_login_window_callback = show_login_window_callback
 
-        # ---------------------------------------------------
         # 심볼 콤보박스
-        # ---------------------------------------------------
-        self.symbolCombo.blockSignals(True)
         self.symbolCombo.clear()
         self.symbolCombo.addItems(["BTCUSDT", "ETHUSDT", "SOLUSDT"])
         self.symbolCombo.setCurrentText(self.current_symbol)
-        self.symbolCombo.blockSignals(False)
-
         self.symbolCombo.currentTextChanged.connect(self.change_symbol)
 
-        # main_window.py __init__ 끝부분에 추가
-
-        # ===============================
-        # Replace placeholder tables
-        # ===============================
-
-        # --- Positions ---
-        try:
-            self.tablePositions.setParent(None)  # UI에서 제거
-        except:
-            pass
-
+        # 레이아웃 교체
+        self.tablePositions.setParent(None)
         self.positionsLayout.addWidget(self.positions_table)
 
-        # --- Account ---
-        try:
-            self.tableAccount.setParent(None)
-        except:
-            pass
-
+        self.tableAccount.setParent(None)
         self.accountLayout.addWidget(self.balance_widget)
 
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(lambda: self.safe_async(self.refresh_loop()))
-        self.timer.start(1000)
-
-    # -------------------------------------------------------
-    # 2) 로그인 후 초기 데이터 주입
-    # -------------------------------------------------------
-    def init_user(self, token: str, user, account_id: int):
+    # ======================================================
+    # 로그인 완료 후 초기화
+    # ======================================================
+    def init_user(self, token, user, account_id):
         self.api.set_token(token)
         self.user = user
         self.account_id = account_id
 
-        # self.labelUser.setText(f"{user['name']} ({user['email']})")
-        # self.labelAccount.setText(f"계좌번호: {self.account_id}")
-        self.safe_async(self.refresh_all())
+        self.open_orders_widget = OpenOrdersWidget(self.order_api, account_id)
+        self.openOrdersLayout.addWidget(self.open_orders_widget)
+
+        asyncio.create_task(self.fetch_balance())  # 여기만 변경
+
+        self.start_async_tasks()
         self.show()
 
-    # -------------------------------------------------------
-    # 3) 안전한 비동기 실행
-    # -------------------------------------------------------
-    def safe_async(self, coro):
-        try:
-            asyncio.create_task(coro)
-        except Exception as e:
-            print("[ASYNC ERROR]", e)
+    # ======================================================
+    # 안전한 UI 업데이트 함수
+    # ======================================================
+    def safe_ui(self, func, *args):
+        QTimer.singleShot(0, lambda: func(*args))
 
-    # -------------------------------------------------------
-    # 4) 화면 표시 이벤트 → WS 시작
-    # -------------------------------------------------------
-    def showEvent(self, event):
-        super().showEvent(event)
-        if not self.ws_started:
-            self.ws_started = True
-            QTimer.singleShot(0, self.start_async)
 
-    def start_async(self):
-        asyncio.create_task(self.start_price_ws())
-        asyncio.create_task(self.start_depth_ws())
-        asyncio.create_task(self.refresh_tables())
+    # ======================================================
+    # 시작 시 실행할 작업들
+    # ======================================================
+    def start_async_tasks(self):
+        # Price WebSocket
+        self.ws_task = asyncio.create_task(self.start_price_ws())
 
-    # -------------------------------------------------------
-    # 5) WS: Price
-    # -------------------------------------------------------
+        # Background Loop (orderbook / positions / balance)
+        self.bg_task = asyncio.create_task(self.background_loop())
+
+
+    # ======================================================
+    # Price WebSocket
+    # ======================================================
     async def start_price_ws(self):
-        # 기존 연결 종료
         if self.ws:
-            try:
-                await self.ws.stop()
-            except Exception as e:
-                print("[WS STOP ERROR]", e)
+            await self.ws.stop()
             self.ws = None
 
-        print("[WS] PriceWS start:", self.current_symbol)
-        self.ws = PriceWSClient(self.current_symbol, self.update_price)
-        asyncio.create_task(self.ws.connect())
+        await asyncio.sleep(0.05)
 
-    # -------------------------------------------------------
-    # 6) WS: Depth
-    # -------------------------------------------------------
-    async def start_depth_ws(self):
-        if self.depth_client:
-            try:
-                await self.depth_client.stop()
-            except Exception as e:
-                print("[Depth STOP ERROR]", e)
-            self.depth_client = None
+        self.ws = PriceWSClient(self.current_symbol, self.safe_ui_update_price)
+        asyncio.create_task(self.ws.start())  # fire & forget
 
-        print("[WS] DepthWS start:", self.current_symbol)
-        self.depth_client = DepthWSClient(self.current_symbol, self.on_depth_update)
-        asyncio.create_task(self.depth_client.connect())
 
-    # -------------------------------------------------------
-    # 7) Symbol 변경
-    # -------------------------------------------------------
+    # UI 업데이트 전달만 함
+    def safe_ui_update_price(self, data):
+        last = data.get("last")
+        if last:
+            self.safe_ui(lambda: self.labelPrice.setText(f"{last:,.2f}"))
+
+
+    # ======================================================
+    # 심볼 변경 시
+    # ======================================================
     def change_symbol(self, symbol):
-        symbol = symbol.upper()
         if symbol == self.current_symbol:
             return
 
@@ -176,96 +138,179 @@ class MainWindow(QMainWindow):
         self.current_symbol = symbol
         self.order_panel.set_symbol(symbol)
 
-        # 재연결
-        asyncio.create_task(self.restart_streams())
+        # WS 재시작
+        asyncio.create_task(self.start_price_ws())
 
-    async def restart_streams(self):
-        await self.start_price_ws()
-        await self.start_depth_ws()
 
-    # -------------------------------------------------------
-    # 8) 가격 UI 업데이트
-    # -------------------------------------------------------
-    def update_price(self, data):
-        last = data.get("last")
-        if last:
-            self.labelPrice.setText(f"{last:,.2f}")
+    # ======================================================
+    # Background Loop (Orderbook / Positions / Balance)
+    # ======================================================
+    async def background_loop(self):
+        while self.running:
+            try:
+                await self.fetch_orderbook()
+                await self.fetch_positions()
+                await self.fetch_balance()
+                await self.fetch_open_orders()
+                await self.fetch_executions()
+            except Exception as e:
+                print("[BG Loop ERROR]", e)
 
-    # -------------------------------------------------------
-    # 9) 오더북 UI 업데이트
-    # -------------------------------------------------------
-    def on_depth_update(self, bids, asks):
-        self.orderbook.update_depth(bids, asks)
+            await asyncio.sleep(0.5)
 
-    # -------------------------------------------------------
-    # 10) 포지션 테이블 갱신
-    # -------------------------------------------------------
-    async def refresh_tables(self):
+
+    # ======================================================
+    # Fetch — Orderbook / Positions / Balance
+    # ======================================================
+    async def fetch_orderbook(self):
+        try:
+            data = await self.api.get(f"/orderbook/{self.current_symbol}")
+            bids = data.get("bids", [])
+            asks = data.get("asks", [])
+            self.safe_ui(self.orderbook.update_depth, bids, asks)
+        except Exception as e:
+            print("[Orderbook ERROR]", e)
+
+    async def fetch_positions(self):
         try:
             positions = await self.api.get_positions(self.account_id)
-            self.positions_table.render(positions)
+            self.safe_ui(self.positions_table.render, positions)
         except Exception as e:
-            print("[Positions] ERROR:", e)
+            print("[Positions ERROR]", e)
 
-    async def refresh_all(self):
+    async def fetch_balance(self):
         try:
             balance = await self.api.get_account(self.account_id)
-            self.balance_widget.update_balance(balance)
+            self.safe_ui(self.balance_widget.update_balance, balance)
         except Exception as e:
-            print("[Balance] ERROR:", e)
+            print("[Balance ERROR]", e)
 
-    async def refresh_loop(self):
-        await self.refresh_tables()
-        await self.refresh_all()
-
-    # -------------------------------------------------------
-    # 11) BUY / SELL 주문
-    # -------------------------------------------------------
-    async def place_order(self, side):
+    async def fetch_open_orders(self):
         try:
+            # → 반드시 await 필요!
+            orders = await asyncio.to_thread(self.order_api.get_open_orders, self.account_id)
+
+            if not isinstance(orders, list):
+                print("[OpenOrders] Invalid data:", orders)
+                return
+
+            # → UI Thread에서 실행하도록 람다로 감싸기
+            self.safe_ui(lambda: self.open_orders_widget.update_table(orders))
+
+        except Exception as e:
+            print("[OpenOrders ERROR]", e)
+
+    async def fetch_executions(self):
+        try:
+            rows = await self.api.get_executions(self.account_id)
+
+            if not isinstance(rows, list):
+                print("[Executions ERROR] Invalid response:", rows)
+                return
+
+            self.safe_ui(lambda: self.executions_table.update_table(rows))
+
+        except Exception as e:
+            print("[Executions ERROR]", e)
+
+    # ======================================================
+    # 주문 버튼 클릭 → 비동기 함수 실행
+    # ======================================================
+    def on_order_click(self, side):
+        asyncio.create_task(self.async_place_order(side))
+
+    async def cancel_selected_orders(self):
+        order_ids = self.open_orders_widget.cancel_selected_orders()
+        if not order_ids:
+            QMessageBox.warning(self, "Cancel", "선택된 주문이 없습니다.")
+            return
+
+        payload = {"order_ids": order_ids}
+        try:
+            res = await self.api.post("/orders/cancel", json=payload)
+            if res.get("ok"):
+                QMessageBox.information(self, "Cancel", "주문이 취소되었습니다.")
+                await self.fetch_open_orders()
+                await self.fetch_orderbook()
+            else:
+                QMessageBox.warning(self, "Cancel Error", str(res.get("error")))
+        except Exception as e:
+            QMessageBox.warning(self, "Cancel Error", str(e))
+
+    async def async_place_order(self, side):
+        """모든 주문 API는 이 비동기 함수에서 처리한다."""
+        try:
+            order_type = self.order_panel.get_order_type()
             qty = self.order_panel.get_qty()
+            symbol = self.current_symbol
+
             if qty <= 0:
-                QMessageBox.warning(self, "Error", "수량이 올바르지 않습니다.")
+                self.safe_ui(lambda: QMessageBox.warning(self, "Error", "수량 오류"))
                 return
 
-            result = await self.api.order_market(
-                account_id=self.account_id,
-                symbol=self.current_symbol,
-                side=side,
-                qty=qty,
-            )
+            # MARKET
+            if order_type == "Market":
+                result = await self.api.order_market(
+                    account_id=self.account_id,
+                    symbol=symbol,
+                    side=side,
+                    qty=qty
+                )
+            # LIMIT
+            else:
+                price = self.order_panel.get_limit_price()
+                if not price:
+                    self.safe_ui(lambda: QMessageBox.warning(self, "Error", "가격 입력 필요"))
+                    return
 
-            print("ORDER RESULT:", result)
+                result = await self.api.order_limit(
+                    account_id=self.account_id,
+                    symbol=symbol,
+                    side=side,
+                    qty=qty,
+                    price=price
+                )
 
-            if not result.get("ok"):
-                QMessageBox.warning(self, "Order Error", str(result.get("error")))
-                return
+            # 성공 메시지는 UI Thread로
+            self.safe_ui(lambda: QMessageBox.information(
+                self,
+                "Order",
+                f"{side} {order_type} 주문 완료!"
+            ))
 
-            QMessageBox.information(self, "Order", f"{side} 주문 완료!")
-            self.safe_async(self.refresh_tables())
-            self.safe_async(self.refresh_all())
+            # 주문 후 즉시 UI 갱신
+            asyncio.create_task(self.fetch_orderbook())
+            asyncio.create_task(self.fetch_positions())
+            asyncio.create_task(self.fetch_balance())
 
         except Exception as e:
             print("[ORDER ERROR]", e)
-            QMessageBox.warning(self, "Order Error", str(e))
+            self.safe_ui(lambda: QMessageBox.warning(self, "Order Error", str(e)))
 
-    # -------------------------------------------------------
-    # 12) 로그아웃
-    # -------------------------------------------------------
+
+    # ======================================================
+    # 로그아웃 처리
+    # ======================================================
     def logout(self):
-        print("[LOGOUT] 로그아웃 실행")
+        print("[LOGOUT]")
+        self.running = False
         self.api.clear_token()
         self.close()
         self.show_login_window_callback()
 
-    # -------------------------------------------------------
-    # 13) 창 닫힐 때 WS 종료
-    # -------------------------------------------------------
+
+    # ======================================================
+    # 종료 시 WS 정리
+    # ======================================================
     def closeEvent(self, event):
-        try:
-            if self.ws:
-                asyncio.create_task(self.ws.stop())
-            if self.depth_client:
-                asyncio.create_task(self.depth_client.stop())
-        finally:
-            event.accept()
+        self.running = False
+
+        async def shutdown():
+            try:
+                if self.ws:
+                    await self.ws.stop()
+            except Exception as e:
+                print("[WS Close Error]", e)
+
+        asyncio.create_task(shutdown())
+        event.accept()

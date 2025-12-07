@@ -1,4 +1,3 @@
-# ui/widgets/order_panel.py
 from PyQt6.QtWidgets import QWidget
 from PyQt6.uic import loadUi
 
@@ -9,10 +8,11 @@ class OrderPanel(QWidget):
         super().__init__(parent)
         loadUi("ui/order_panel.ui", self)
 
-        # 버튼 연결은 MainWindow에서 처리
-        # 여기서는 버튼 자체만 제공
-        # 수량 단위 (원하면 1.0 으로 바꿔도 됨)
+        # 수량 단위
         self.qty_step = 0.01
+
+        # 주문타입 콤보박스 변경 이벤트
+        self.comboType.currentTextChanged.connect(self.on_type_changed)
 
         # 버튼 연결
         self.btnQtyPlus.clicked.connect(self.on_qty_plus)
@@ -20,47 +20,60 @@ class OrderPanel(QWidget):
         self.btnQtyHalf.clicked.connect(self.on_qty_half)
         self.btnQtyDouble.clicked.connect(self.on_qty_double)
 
-    def get_qty(self) -> float:
-        text = self.editQty.text().strip()
+    # -----------------------------
+    #   Market / Limit 변경 처리
+    # -----------------------------
+    def on_type_changed(self, text):
+        if text == "Market":
+            self.editOrderPrice.setEnabled(False)
+            self.editOrderPrice.setPlaceholderText("Market Price")
+        else:
+            self.editOrderPrice.setEnabled(True)
+            self.editOrderPrice.setPlaceholderText("Limit Price 입력")
+
+    def get_order_type(self) -> str:
+        return self.comboType.currentText()
+
+    def get_limit_price(self) -> float | None:
+        if self.get_order_type() != "Limit":
+            return None
+
+        text = self.editOrderPrice.text().replace(",", "").strip()
+
         if not text:
-            return 0.0
+            return None
+
         try:
             return float(text)
-        except ValueError:
+        except:
+            return None
+
+    # -----------------------------
+    #   수량 처리
+    # -----------------------------
+    def get_qty(self) -> float:
+        try:
+            return float(self.editQty.text())
+        except:
             return 0.0
-        
+
     def _set_qty(self, value: float):
-        # 0 밑으로 내려가면 0으로 고정
         if value < 0:
-            value = 0.0
+            value = 0
+        self.editQty.setText(f"{value:.2f}".rstrip("0").rstrip("."))
 
-        # 소수점 두 자리 정도로 표현
-        self.editQty.setText(f"{value:.2f}".rstrip('0').rstrip('.'))
-
-    def set_symbol(self, symbol: str):
-        """심볼 변경 시 UI 업데이트 (필요 시 확장)"""
-        self.labelSymbol.setText(symbol)
-
-
-    # ------------------------
-    #  버튼 동작 구현
-    # ------------------------
+    # qty 조정 버튼
     def on_qty_plus(self):
-        cur = self.get_qty()
-        new = cur + self.qty_step
-        self._set_qty(new)
+        self._set_qty(self.get_qty() + self.qty_step)
 
     def on_qty_minus(self):
-        cur = self.get_qty()
-        new = cur - self.qty_step
-        self._set_qty(new)
+        self._set_qty(self.get_qty() - self.qty_step)
 
     def on_qty_half(self):
-        cur = self.get_qty()
-        new = cur / 2.0
-        self._set_qty(new)
+        self._set_qty(self.get_qty() / 2)
 
     def on_qty_double(self):
-        cur = self.get_qty()
-        new = cur * 2.0
-        self._set_qty(new)
+        self._set_qty(self.get_qty() * 2)
+
+    def set_symbol(self, symbol: str):
+        self.labelSymbol.setText(symbol)

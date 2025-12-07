@@ -13,13 +13,19 @@
   <property name="windowTitle">
    <string>HTS Client</string>
   </property>
+
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="rootLayout">
+    <!-- Top Bar Layout                     -->
     <item>
      <layout class="QHBoxLayout" name="topBarLayout">
+
+      <!-- Symbol Combo -->
       <item>
        <widget class="QComboBox" name="symbolCombo"/>
       </item>
+
+      <!-- Price -->
       <item>
        <widget class="QLabel" name="labelPrice">
         <property name="styleSheet">
@@ -30,6 +36,8 @@
         </property>
        </widget>
       </item>
+
+      <!-- Change -->
       <item>
        <widget class="QLabel" name="labelChange">
         <property name="styleSheet">
@@ -40,126 +48,138 @@
         </property>
        </widget>
       </item>
+
+      <!-- Chart Button -->
       <item>
        <widget class="QPushButton" name="btnOpenChart">
         <property name="text">
-         <string>📈 차트 보기</string>
+         <string>차트 보기</string>
         </property>
        </widget>
       </item>
+
+      <!-- 추가: Open Orders 버튼 -->
+      <item>
+       <widget class="QPushButton" name="btnOpenOrders">
+        <property name="text">
+         <string>미체결 주문</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">
+            background:#444;
+            color:white;
+            padding:5px 10px;
+            border-radius:4px;
+         </string>
+        </property>
+       </widget>
+      </item>
+
+      <!-- Spacer -->
       <item>
        <spacer name="topSpacer">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
-         <size>
-          <width>0</width>
-          <height>0</height>
-         </size>
+         <size><width>0</width><height>0</height></size>
         </property>
        </spacer>
       </item>
-       <item>
+
+      <!-- Logout -->
+      <item>
         <widget class="QPushButton" name="btnLogout">
-         <property name="text">
-            <string>로그아웃</string>
-         </property>
-         <property name="styleSheet">
+          <property name="text"><string>로그아웃</string></property>
+          <property name="styleSheet">
             <string notr="true">background:#555; color:white; padding:5px;</string>
-         </property>
+          </property>
         </widget>
       </item>
+
      </layout>
     </item>
+    <!-- Middle Splitter (Orderbook + OrderPanel) -->
     <item>
      <widget class="QSplitter" name="splitterMain">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
+      <property name="orientation"><enum>Qt::Horizontal</enum></property>
+
+      <!-- Left: Orderbook -->
       <widget class="QFrame" name="orderbookContainer">
-       <property name="frameShape">
-        <enum>QFrame::StyledPanel</enum>
-       </property>
+       <property name="frameShape"><enum>QFrame::StyledPanel</enum></property>
        <layout class="QVBoxLayout" name="orderbookLayout">
+
         <item>
          <widget class="QLabel" name="orderbookTitle">
           <property name="styleSheet">
            <string notr="true">font-size: 18px; font-weight: bold;</string>
           </property>
-          <property name="text">
-           <string>Orderbook</string>
-          </property>
+          <property name="text"><string>Orderbook</string></property>
          </widget>
         </item>
+
         <item>
          <widget class="QTableWidget" name="tableOrderbook">
-          <column>
-           <property name="text">
-            <string>Bid</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Price</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Ask</string>
-           </property>
-          </column>
+          <column><property name="text"><string>Bid</string></property></column>
+          <column><property name="text"><string>Price</string></property></column>
+          <column><property name="text"><string>Ask</string></property></column>
          </widget>
         </item>
+
        </layout>
       </widget>
+
+      <!-- Right: Order Panel -->
       <widget class="QFrame" name="orderPanelContainer">
-       <property name="frameShape">
-        <enum>QFrame::StyledPanel</enum>
-       </property>
+       <property name="frameShape"><enum>QFrame::StyledPanel</enum></property>
        <layout class="QVBoxLayout" name="orderPanelLayout"/>
       </widget>
+
      </widget>
     </item>
+    <!-- Bottom Tabs (Positions, Executions, Account) -->
     <item>
      <widget class="QTabWidget" name="bottomTabs">
-      <property name="currentIndex">
-       <number>0</number>
-      </property>
+      <property name="currentIndex"><number>0</number></property>
+
       <widget class="QWidget" name="tabPositions">
-       <attribute name="title">
-        <string>Positions</string>
-       </attribute>
+       <attribute name="title"><string>Positions</string></attribute>
        <layout class="QVBoxLayout" name="positionsLayout">
-        <item>
-         <widget class="QTableWidget" name="tablePositions"/>
-        </item>
+        <item><widget class="QTableWidget" name="tablePositions"/></item>
        </layout>
       </widget>
+
       <widget class="QWidget" name="tabExecutions">
-       <attribute name="title">
-        <string>Executions</string>
-       </attribute>
-       <layout class="QVBoxLayout" name="executionsLayout">
-        <item>
-         <widget class="QTableWidget" name="tableExecutions"/>
-        </item>
-       </layout>
-      </widget>
+ <attribute name="title"><string>Executions</string></attribute>
+ <layout class="QVBoxLayout" name="executionsLayout">
+    <property name="spacing">
+        <number>0</number>
+    </property>
+    <property name="margin">
+        <number>0</number>
+    </property>
+ </layout>
+</widget>
+
+
       <widget class="QWidget" name="tabAccount">
-       <attribute name="title">
-        <string>Account</string>
-       </attribute>
+       <attribute name="title"><string>Account</string></attribute>
        <layout class="QVBoxLayout" name="accountLayout">
-        <item>
-         <widget class="QTableWidget" name="tableAccount"/>
-        </item>
+        <item><widget class="QTableWidget" name="tableAccount"/></item>
        </layout>
       </widget>
+         <widget class="QWidget" name="tabOpenOrders">
+      <attribute name="title"><string>OpenOrders</string></attribute>
+      <layout class="QVBoxLayout" name="openOrdersLayout"/>
+    </widget>
+
+
      </widget>
     </item>
+
    </layout>
   </widget>
+
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <resources/>
