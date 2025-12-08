@@ -139,9 +139,9 @@ class APIClient:
 """)
 
     # --------------------------------------------------------
-    # 7. services/ws_client.py
+    # 7. services/ws_client.py.20251208
     # --------------------------------------------------------
-    write("services/ws_client.py", """
+    write("services/ws_client.py.20251208", """
 import asyncio
 import json
 import websockets

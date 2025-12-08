@@ -98,6 +98,9 @@ class PositionsTable(QTableWidget):
 
         item.setText(str(value))
 
+    def get_cached_rows(self):
+        return self._prev_rows or []
+
     # ----------------------------------------------------------
     # 🔥 색상 적용 (Side / PnL)
     # ----------------------------------------------------------

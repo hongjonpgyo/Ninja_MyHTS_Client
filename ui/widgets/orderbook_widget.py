@@ -1,80 +1,74 @@
-from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem
+from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
 from PyQt6.QtGui import QColor, QBrush
+from PyQt6.QtCore import Qt
 
 
 class OrderbookWidget:
 
-    def __init__(self, table: QTableWidget):
+    def __init__(self, table):
         self.table = table
         self.setup()
 
     def setup(self):
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["Bid", "Price", "Ask"])
+
+        self.table.setColumnCount(7)
+        self.table.setHorizontalHeaderLabels([
+            "Bin Bid", "DB All", "My Bid",
+            "Price",
+            "My Ask", "DB All", "Bin Ask"
+        ])
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setRowCount(20)
 
-        for row in range(20):
-            for col in range(3):
+        for r in range(20):
+            for c in range(7):
                 item = QTableWidgetItem("")
-                item.setTextAlignment(0x0004 | 0x0080)
-                self.table.setItem(row, col, item)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.table.setItem(r, c, item)
 
+    # -------------------------------------------------------------
+    # 🔥 v3 Orderbook 표시
+    # -------------------------------------------------------------
     def update_depth(self, bids, asks):
-        """
-        bids, asks = [[price, my_qty], ...]
-            → price: Binance 실시간 가격
-            → my_qty: 내 주문 수량 (없으면 0)
-        """
 
-        for i in range(20):
-            # --------------------------
-            # BID 영역 (좌측)
-            # --------------------------
+        rows = 20
+
+        for i in range(rows):
+
+            # -------------------- BIDS --------------------
             if i < len(bids):
-                price = float(bids[i][0])
-                my_qty = float(bids[i][1])
-
-                item_bid = self.table.item(i, 0)
-                item_price = self.table.item(i, 1)
-
-                item_bid.setText(f"{my_qty:,.3f}" if my_qty else "")
-                item_price.setText(f"{price:,.2f}")
-
-                # ---- BID 하이라이트 ----
-                if my_qty > 0:
-                    color = QColor(25, 118, 210, 80)  # 블루 투명
-                    item_bid.setBackground(QBrush(color))
-                    item_price.setBackground(QBrush(color))
-                else:
-                    item_bid.setBackground(QBrush())
-                    item_price.setBackground(QBrush())
-
+                b = bids[i]
+                self._set(i, 0, b["binance_qty"])
+                self._set(i, 1, b["db_all_qty"])
+                self._set(i, 2, b["db_my_qty"])
+                self._set(i, 3, f"{b['price']:,.2f}")
             else:
-                self.table.item(i, 0).setText("")
-                self.table.item(i, 1).setText("")
+                self._clear_bid(i)
 
-        # --------------------------
-        # ASK 영역 (오른쪽)
-        # --------------------------
-        for i in range(20):
+            # -------------------- ASKS --------------------
             if i < len(asks):
-                price = float(asks[i][0])
-                my_qty = float(asks[i][1])
-
-                item_ask = self.table.item(i, 2)
-
-                item_ask.setText(f"{my_qty:,.3f}" if my_qty else "")
-
-                # ---- ASK 하이라이트 ----
-                if my_qty > 0:
-                    color = QColor(211, 47, 47, 80)  # 레드 투명
-                    item_ask.setBackground(QBrush(color))
-                else:
-                    item_ask.setBackground(QBrush())
-
+                a = asks[i]
+                self._set(i, 3, f"{a['price']:,.2f}")  # center price update
+                self._set(i, 4, a["db_my_qty"])
+                self._set(i, 5, a["db_all_qty"])
+                self._set(i, 6, a["binance_qty"])
             else:
-                self.table.item(i, 2).setText("")
+                self._clear_ask(i)
 
-    def clear(self):
-        self.table.clearContents()
-        self.table.setRowCount(0)
+    # -------------------------------------------------------------
+    # 헬퍼 함수: 셀 세팅
+    # -------------------------------------------------------------
+    def _set(self, r, c, val):
+        item = self.table.item(r, c)
+        if item:
+            item.setText(str(val))
+        else:
+            self.table.setItem(r, c, QTableWidgetItem(str(val)))
+
+    def _clear_bid(self, r):
+        for c in range(0, 4):
+            self._set(r, c, "")
+
+    def _clear_ask(self, r):
+        for c in range(3, 7):
+            self._set(r, c, "")

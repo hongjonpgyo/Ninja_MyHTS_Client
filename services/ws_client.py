@@ -1,4 +1,3 @@
-# services/ws_client.py
 import asyncio
 import json
 import ssl
@@ -6,126 +5,50 @@ import websockets
 from PyQt6.QtCore import QTimer
 
 
-BINANCE_WS = "wss://stream.binance.com:9443/ws"
-
-
-# ============================================================
-# DEPTH WEBSOCKET CLIENT
-# ============================================================
-class DepthWSClient:
-    def __init__(self, symbol: str, callback):
-        self.symbol = symbol.lower()
-        self.callback = callback
-        self.is_running = False
-        self.ws = None
-
-    async def connect(self):
-        """Binance Depth WS 연결 & 수신 루프"""
-        stream = f"{self.symbol}@depth5@100ms"
-        url = f"{BINANCE_WS}/{stream}"
-        ssl_ctx = ssl._create_unverified_context()
-
-        print(f"[DepthWS] Connect → {url}")
-        self.is_running = True
-
-        while self.is_running:
-            try:
-                async with websockets.connect(url, ssl=ssl_ctx) as ws:
-                    self.ws = ws
-                    print("[DepthWS] Connected")
-
-                    async for msg in ws:
-                        if not self.is_running:
-                            break
-
-                        data = json.loads(msg)
-
-                        bids = [(float(p), float(q)) for p, q in data.get("bids", [])]
-                        asks = [(float(p), float(q)) for p, q in data.get("asks", [])]
-
-                        # UI 업데이트는 Qt Main Thread에서 실행
-                        QTimer.singleShot(
-                            0, lambda b=bids, a=asks: self.callback(b, a)
-                        )
-
-            except Exception as e:
-                if not self.is_running:
-                    break
-                print(f"[DepthWS ERROR] {e}")
-                await asyncio.sleep(0.5)
-
-        print("[DepthWS] 종료됨")
-
-    async def stop(self):
-        """WS 완전 종료"""
-        print("[DepthWS] STOP 요청")
-        self.is_running = False
-
-        try:
-            if self.ws:
-                await self.ws.close()
-        except:
-            pass
-
-        self.ws = None
-
-# ============================================================
-# PRICE WEBSOCKET CLIENT
-# ============================================================
-# services/ws_client.py
-import asyncio
-import json
-import websockets
-from PyQt6.QtCore import QTimer
-
-
-class PriceWSClient:
-    def __init__(self, symbol: str, callback):
-        self.symbol = symbol.lower()
+# -----------------------------------------------------------
+# 공통 Base WebSocket Client
+# -----------------------------------------------------------
+class BaseWSClient:
+    def __init__(self, url: str, callback):
+        self.url = url
         self.callback = callback
         self.running = False
-        self.ws = None
         self.task = None
+        self.ws = None
+
+        self.ssl_context = ssl._create_unverified_context()
 
     async def start(self):
-        """qasync 기반에서 안전하게 WS 시작"""
-        await self.stop()          # 기존 소켓 정리
+        """기존 실행 중단 후 새로운 task 실행"""
+        await self.stop()
         self.running = True
         self.task = asyncio.create_task(self.run())
 
     async def run(self):
-        """독립 실행 루프"""
-        url = f"ws://127.0.0.1:9000/ws/price/{self.symbol}"
-        print(f"[PriceWS] Connect → {url}")
+        """재연결 루프"""
+        print(f"[WS] Connecting → {self.url}")
 
         while self.running:
             try:
-                async with websockets.connect(url) as ws:
-                    self.ws = ws
-                    print("[PriceWS] Connected")
+                if self.url.startswith("wss://"):
+                    ws = await websockets.connect(self.url, ssl=self.ssl_context)
+                else:
+                    ws = await websockets.connect(self.url)
 
-                    while self.running:
-                        try:
-                            msg = await ws.recv()
-                            data = json.loads(msg)
-                            QTimer.singleShot(0, lambda d=data: self.callback(d))
-                        except Exception as e:
-                            print("[PriceWS recv error]", e)
-                            break
+                self.ws = ws
+                print(f"[WS] Connected → {self.url}")
 
-            except asyncio.CancelledError:
-                print("[PriceWS] cancelled")
-                break
+                async for message in ws:
+                    data = json.loads(message)
+                    QTimer.singleShot(0, lambda d=data: self.callback(d))
 
             except Exception as e:
-                print("[PriceWS ERROR]", e)
+                print(f"[WS ERROR] {self.url} / {e}")
+                await asyncio.sleep(1)
 
-            await asyncio.sleep(0.3)
-
-        print("[PriceWS] 종료됨")
+        print(f"[WS] Closed → {self.url}")
 
     async def stop(self):
-        """WS 종료"""
         self.running = False
 
         if self.task:
@@ -141,55 +64,39 @@ class PriceWSClient:
             except:
                 pass
 
-        self.task = None
         self.ws = None
+        self.task = None
+
+class DepthWSClient(BaseWSClient):
+    def __init__(self, symbol, callback):
+        self.symbol = symbol.lower()
+
+        url = f"wss://stream.binance.com:9443/ws/{self.symbol}@depth20@100ms"
+
+        super().__init__(url, callback)
+
+    def _parse(self, data):
+        bids = [(float(p), float(q)) for p, q in data.get("bids", [])]
+        asks = [(float(p), float(q)) for p, q in data.get("asks", [])]
+        return {"bids": bids, "asks": asks}
 
 
-# services/ws_client.py
-import websockets
-import asyncio
-import json
+class PriceWSClient(BaseWSClient):
+    def __init__(self, symbol, callback):
+        self.symbol = symbol.lower()
+        url = f"ws://127.0.0.1:9000/ws/price/{self.symbol}"
+        super().__init__(url, callback)
 
-class ExecutionWSClient:
+
+class ExecutionWSClient(BaseWSClient):
     def __init__(self, account_id, callback):
-        self.account_id = account_id
-        self.callback = callback
-        self.running = True
+        url = f"ws://127.0.0.1:9000/ws/executions/{account_id}"
+        super().__init__(url, callback)
 
-    async def start(self):
-        url = f"ws://127.0.0.1:9000/ws/executions/{self.account_id}"
 
-        while self.running:
-            try:
-                async with websockets.connect(url) as ws:
-                    print("[ExecWS] Connected")
+class AccountWSClient(BaseWSClient):
+    def __init__(self, account_id, callback):
+        url = f"ws://127.0.0.1:9000/ws/account/{account_id}"
+        super().__init__(url, callback)
 
-                    while True:
-                        msg = await ws.recv()
-                        data = json.loads(msg)
-                        self.callback(data)
-
-            except Exception as e:
-                print("[ExecWS ERROR]", e)
-                await asyncio.sleep(1)
-
-    async def stop(self):
-        self.running = False
-
-class AccountWSClient:
-    def __init__(self, account_id, on_update):
-        self.url = f"ws://127.0.0.1:9000/ws/account/{account_id}"
-        self.on_update = on_update
-        self.running = True
-
-    async def start(self):
-        print(self.url)
-        async with websockets.connect(self.url) as ws:
-            while self.running:
-                msg = await ws.recv()
-                data = json.loads(msg)
-                self.on_update(data)
-
-    async def stop(self):
-        self.running = False
 
