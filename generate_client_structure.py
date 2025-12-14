@@ -40,7 +40,7 @@ from qasync import QEventLoop
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        loadUi("ui/main_window.ui", self)
+        loadUi("ui/main_window.ui.20251209", self)
 
 def run():
     app = QApplication(sys.argv)
@@ -78,9 +78,9 @@ qasync
 """)
 
     # --------------------------------------------------------
-    # 5. ui/main_window.ui (기본 UI)
+    # 5. ui/main_window.ui.20251209 (기본 UI)
     # --------------------------------------------------------
-    write("ui/main_window.ui", """
+    write("ui/main_window.ui.20251209", """
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>

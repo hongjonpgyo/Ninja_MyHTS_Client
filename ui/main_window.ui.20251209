@@ -129,6 +129,32 @@
        </layout>
       </widget>
 
+         <!-- Middle: Time & Sales (New Panel) -->
+<widget class="QFrame" name="timeSalesContainer">
+ <property name="frameShape">
+  <enum>QFrame::StyledPanel</enum>
+ </property>
+ <layout class="QVBoxLayout" name="timeSalesLayout">
+
+  <item>
+   <widget class="QLabel" name="labelTimeSalesTitle">
+    <property name="styleSheet">
+     <string notr="true">font-size: 18px; font-weight: bold;</string>
+    </property>
+    <property name="text">
+     <string>Time &amp; Sales</string>
+    </property>
+   </widget>
+  </item>
+
+  <item>
+   <widget class="QTableWidget" name="tableTimeSales"/>
+  </item>
+
+ </layout>
+</widget>
+
+
       <!-- Right: Order Panel -->
       <widget class="QFrame" name="orderPanelContainer">
        <property name="frameShape"><enum>QFrame::StyledPanel</enum></property>

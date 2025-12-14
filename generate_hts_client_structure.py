@@ -156,7 +156,7 @@ from core.state import state
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        loadUi("HTS_Client/ui/main_window.ui", self)
+        loadUi("HTS_Client/ui/main_window.ui.20251209", self)
 
         event_bus.subscribe("price.update", self.update_price)
 
@@ -193,7 +193,7 @@ class MainWindow(QMainWindow):
     f"{ROOT}/utils/threads.py": """# Qt thread helper
 """,
 
-    f"{ROOT}/ui/main_window.ui": """<?xml version="1.0" encoding="UTF-8"?>
+    f"{ROOT}/ui/main_window.ui.20251209": """<?xml version="1.0" encoding="UTF-8"?>
 <!-- Qt Designer에서 수정할 기본 UI 템플릿 -->
 <ui version="4.0">
  <class>MainWindow</class>

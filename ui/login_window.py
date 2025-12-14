@@ -10,13 +10,17 @@ class LoginWindow(QDialog):
         super().__init__(parent)
         loadUi("ui/login_window.ui", self)
 
+        print("LoginWindow on_login_success:", on_login_success)
+        print("type:", type(on_login_success))
+
+
         self.api = api_client              # ✅ 인스턴스 저장
         self.on_login_success = on_login_success
 
         self.btnLogin.clicked.connect(self._on_login_clicked)
 
-        self.editEmail.setText('admin@admin.com')
-        self.editPassword.setText('admin')
+        self.editEmail.setText('demo@local')
+        self.editPassword.setText('1234')
 
     def _on_login_clicked(self):
         asyncio.create_task(self._do_login())    # ✅ 코루틴 객체 전달
@@ -35,10 +39,12 @@ class LoginWindow(QDialog):
                 token = login_res["access_token"]
                 user = login_res["user_id"]
                 account_id = login_res["account_id"]
-
+                print(token, user, account_id)
                 # 🔥 MainWindow 열기
                 if self.on_login_success:
                     self.on_login_success(token, user, account_id)
+                self.accept()
+                self.close()
             else:
                 QMessageBox.warning(self, "Login Failed", str(login_res))
 

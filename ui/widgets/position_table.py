@@ -8,21 +8,27 @@ from PyQt6.QtCore import Qt
 
 class PositionsTable(QTableWidget):
 
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # 컬럼 정의
         self.setColumnCount(6)
-        self.setHorizontalHeaderLabels([
-            "Symbol", "Side", "Qty",
-            "Entry", "PnL", "Liq"
-        ])
+        self.setHorizontalHeaderLabels(
+            ["Symbol", "Side", "Qty", "Entry", "PnL", "Liq"]
+        )
 
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.verticalHeader().setVisible(False)
-        self.setAlternatingRowColors(True)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
 
-        # 이전 데이터 캐싱 → 변화 감지용
+        self.verticalHeader().setVisible(False)
+        self.setAlternatingRowColors(False)
+
+        header = self.horizontalHeader()
+        header.setStretchLastSection(True)
+        for i in range(self.columnCount() - 1):
+            header.setSectionResizeMode(i, header.ResizeMode.Stretch)
+
         self._prev_rows = []
 
     # ----------------------------------------------------------

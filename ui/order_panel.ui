@@ -16,10 +16,7 @@
     <height>600</height>
    </size>
   </property>
-
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0,1,0,0,0,1">
-
-   <!-- Symbol + Price -->
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0,0,0,0,0">
    <item>
     <layout class="QHBoxLayout" name="symbolPriceLayout">
      <item>
@@ -44,11 +41,8 @@
      </item>
     </layout>
    </item>
-
-   <!-- Position Info -->
    <item>
     <layout class="QGridLayout" name="positionGrid">
-
      <item row="0" column="0">
       <widget class="QLabel" name="labelPosQty">
        <property name="text">
@@ -56,9 +50,8 @@
        </property>
       </widget>
      </item>
-
      <item row="0" column="1">
-      <widget class="QLabel" name="valuePosQty">
+      <widget class="QLabel" name="valuePostionQty">
        <property name="styleSheet">
         <string notr="true">color:#4fc3f7; font-weight:500;</string>
        </property>
@@ -67,7 +60,6 @@
        </property>
       </widget>
      </item>
-
      <item row="1" column="0">
       <widget class="QLabel" name="labelAvgPrice">
        <property name="text">
@@ -75,7 +67,6 @@
        </property>
       </widget>
      </item>
-
      <item row="1" column="1">
       <widget class="QLabel" name="valueAvgPrice">
        <property name="text">
@@ -83,8 +74,6 @@
        </property>
       </widget>
      </item>
-
-     <!-- NEW: PnL -->
      <item row="2" column="0">
       <widget class="QLabel" name="labelPnl">
        <property name="text">
@@ -102,8 +91,6 @@
        </property>
       </widget>
      </item>
-
-     <!-- NEW: Liquidation Price -->
      <item row="3" column="0">
       <widget class="QLabel" name="labelLiq">
        <property name="text">
@@ -111,7 +98,6 @@
        </property>
       </widget>
      </item>
-
      <item row="3" column="1">
       <widget class="QLabel" name="valueLiq">
        <property name="styleSheet">
@@ -122,11 +108,8 @@
        </property>
       </widget>
      </item>
-
     </layout>
    </item>
-
-   <!-- Order Type -->
    <item>
     <layout class="QHBoxLayout" name="typeLayout">
      <item>
@@ -136,7 +119,6 @@
        </property>
       </widget>
      </item>
-
      <item>
       <widget class="QComboBox" name="comboType">
        <item>
@@ -153,8 +135,6 @@
      </item>
     </layout>
    </item>
-
-   <!-- Price -->
    <item>
     <layout class="QHBoxLayout" name="priceLayout">
      <item>
@@ -164,7 +144,6 @@
        </property>
       </widget>
      </item>
-
      <item>
       <widget class="QLineEdit" name="editOrderPrice">
        <property name="enabled">
@@ -177,8 +156,6 @@
      </item>
     </layout>
    </item>
-
-   <!-- Qty Input -->
    <item>
     <layout class="QHBoxLayout" name="qtyLayout">
      <item>
@@ -188,7 +165,6 @@
        </property>
       </widget>
      </item>
-
      <item>
       <widget class="QLineEdit" name="editQty">
        <property name="text">
@@ -196,7 +172,6 @@
        </property>
       </widget>
      </item>
-
      <item>
       <widget class="QPushButton" name="btnQtyMinus">
        <property name="text">
@@ -204,7 +179,6 @@
        </property>
       </widget>
      </item>
-
      <item>
       <widget class="QPushButton" name="btnQtyPlus">
        <property name="text">
@@ -214,8 +188,6 @@
      </item>
     </layout>
    </item>
-
-   <!-- Qty Multiplier -->
    <item>
     <layout class="QHBoxLayout" name="qtyMultiLayout">
      <item>
@@ -234,8 +206,6 @@
      </item>
     </layout>
    </item>
-
-   <!-- BUY / SELL -->
    <item>
     <layout class="QHBoxLayout" name="btnLayout">
      <item>
@@ -248,7 +218,6 @@
        </property>
       </widget>
      </item>
-
      <item>
       <widget class="QPushButton" name="btnSell">
        <property name="styleSheet">
@@ -261,19 +230,22 @@
      </item>
     </layout>
    </item>
-
-   <!-- Log Output -->
    <item>
-    <widget class="QTextEdit" name="textLog">
-     <property name="styleSheet">
-      <string notr="true">font-size:12px; background:#202020; color:#cccccc;</string>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
      </property>
-     <property name="readOnly">
-      <bool>true</bool>
+     <property name="sizeType">
+      <enum>QSizePolicy::Expanding</enum>
      </property>
-    </widget>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>1</width>
+       <height>1</height>
+      </size>
+     </property>
+    </spacer>
    </item>
-
   </layout>
  </widget>
  <resources/>

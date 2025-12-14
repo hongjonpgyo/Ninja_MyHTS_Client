@@ -1,4 +1,10 @@
+from datetime import datetime
+
 from PyQt6 import QtWidgets, QtGui, QtCore
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
+from PyQt6.QtWidgets import QTableWidgetItem
+import time
 
 class ExecutionsTable(QtWidgets.QTableWidget):
 
@@ -98,3 +104,64 @@ class ExecutionsTable(QtWidgets.QTableWidget):
 
         self._color_side(row, ex["side"])
         self._highlight_new_row(row)
+
+    def append_tick(self, price: float, side: str):
+        row = self.rowCount()
+        self.insertRow(row)
+
+        time_str = datetime.now().strftime("%H:%M:%S")
+
+        self.setItem(row, 0, QTableWidgetItem(time_str))
+        self.setItem(row, 1, QTableWidgetItem(f"{price:,.2f}"))
+        self.setItem(row, 2, QTableWidgetItem("1"))
+        self.setItem(row, 3, QTableWidgetItem(side))
+
+        # 색상
+        if side == "BUY":
+            color = QColor("#ff4d4d")
+        else:
+            color = QColor("#4da6ff")
+
+        for c in range(4):
+            self.item(row, c).setForeground(color)
+            self.item(row, c).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # 최근 100개만 유지
+        if self.rowCount() > 100:
+            self.removeRow(0)
+
+    def append_trade(self, trade: dict):
+        """
+        trade = {
+            symbol, price, qty, side, ts
+        }
+        """
+        row = self.rowCount()
+        self.insertRow(row)
+
+        ts = trade.get("ts", 0)
+        price = trade["price"]
+        qty = trade["qty"]
+        side = trade["side"]
+
+        time_str = time.strftime(
+            "%H:%M:%S",
+            time.localtime(ts / 1000)
+        )
+
+        self.setItem(row, 0, QTableWidgetItem(time_str))
+        self.setItem(row, 1, QTableWidgetItem(side))
+        self.setItem(row, 2, QTableWidgetItem(f"{price:.2f}"))
+        self.setItem(row, 3, QTableWidgetItem(f"{qty:.4f}"))
+
+        # 색상
+        color = QColor("#2ecc71") if side == "BUY" else QColor("#e74c3c")
+        for c in range(4):
+            self.item(row, c).setForeground(color)
+            self.item(row, c).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # 최근 N개 유지
+        if self.rowCount() > 200:
+            self.removeRow(0)
+
+        self.scrollToBottom()
