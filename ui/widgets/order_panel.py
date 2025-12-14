@@ -10,7 +10,7 @@ class OrderPanel(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        loadUi("ui/order_panel.ui", self)
+        loadUi("ui/order_panel_20251214.ui", self)
 
         # 수량 단위
         self.tick_size = 0.01

@@ -1,6 +1,6 @@
 # ui/main_window.py
 import asyncio
-from PyQt6.QtWidgets import QMainWindow
+from PyQt6.QtWidgets import QMainWindow, QSizePolicy
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer
 
@@ -76,6 +76,11 @@ class MainWindow(QMainWindow):
         self.orderbook = OrderbookWidgetHTS(self.tableOrderbook)
         self.tableOrderbook.cellClicked.connect(self.on_orderbook_click)
 
+        self.tableWatchlist.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding
+        )
+
         self.bg_controller = BackgroundController(self, interval=0.5)
 
         self.symbol_controller = SymbolController(
@@ -110,10 +115,14 @@ class MainWindow(QMainWindow):
         self.exec_ws = None
         self.account_ws = None
 
-        # Splitter 비율 (요청 반영)
-        self.splitterMain.setStretchFactor(0, 5)  # orderbook
-        self.splitterMain.setStretchFactor(1, 3)  # time&sales
-        self.splitterMain.setStretchFactor(2, 3)  # orderpanel
+        self.splitterRoot.setStretchFactor(0, 6)  # 좌측
+        self.splitterRoot.setStretchFactor(1, 4)  # OrderPanel
+
+        self.splitterLeft.setStretchFactor(0, 6)  # 상단
+        self.splitterLeft.setStretchFactor(1, 2)  # 하단 탭
+
+        self.splitterTop.setStretchFactor(0, 5)  # Orderbook
+        self.splitterTop.setStretchFactor(1, 4)  # Time&Sales
 
     # -------------------------
     # ✅ 안전 UI

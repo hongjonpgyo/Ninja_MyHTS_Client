@@ -4,7 +4,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QColor
 from PyQt6.QtCore import Qt
-
+from ui.utils.formatter import fmt
+from ui.utils.formatter import DISPLAY_FORMAT
+from ui.utils.formatter import DEFAULT_FMT
 
 class PositionsTable(QTableWidget):
 
@@ -67,12 +69,35 @@ class PositionsTable(QTableWidget):
     # 전체 Row 최초 생성
     # ----------------------------------------------------------
     def _draw_row(self, r, row):
-        self._set_item(r, 0, row["symbol"])
+        symbol = row.get("symbol", "")
+        fmt_value = DISPLAY_FORMAT.get(symbol, DEFAULT_FMT)
+
+        self._set_item(r, 0, symbol)
         self._set_item(r, 1, row.get("side", ""))
-        self._set_item(r, 2, row["qty"])
-        self._set_item(r, 3, row["entry_price"])
-        self._set_item(r, 4, row["unrealized_pnl"])
-        self._set_item(r, 5, row.get("liq_price", ""))  # ← 수정! QTableWidgetItem 제거
+
+        # Qty
+        self._set_item(
+            r, 2,
+            fmt(row.get("qty"), fmt_value["qty"])
+        )
+
+        # Entry Price
+        self._set_item(
+            r, 3,
+            fmt(row.get("entry_price"), fmt_value["price"])
+        )
+
+        # PnL
+        self._set_item(
+            r, 4,
+            fmt(row.get("unrealized_pnl"), fmt_value["pnl"])
+        )
+
+        # Liquidation Price
+        self._set_item(
+            r, 5,
+            fmt(row.get("liq_price"), fmt_value["price"])
+        )
 
         self._apply_color(r, row)
 
@@ -80,16 +105,33 @@ class PositionsTable(QTableWidget):
     # 변경된 셀만 업데이트
     # ----------------------------------------------------------
     def _update_changed_cells(self, r, prev, new):
-        columns = ["symbol", "side", "qty", "entry_price", "unrealized_pnl", "liq_price"]
+        columns = [
+            ("symbol", None),
+            ("side", None),
+            ("qty", "qty"),
+            ("entry_price", "price"),
+            ("unrealized_pnl", "pnl"),
+            ("liq_price", "price"),
+        ]
 
-        for c, key in enumerate(columns):
-            old_val = str(prev.get(key, ""))
-            new_val = str(new.get(key, ""))
+        symbol = new.get("symbol", "")
+        fmt_value = DISPLAY_FORMAT.get(symbol, DEFAULT_FMT)
 
-            if old_val != new_val:
+        for c, (key, fmt_key) in enumerate(columns):
+            old_val = prev.get(key)
+            new_val = new.get(key)
+
+            if old_val == new_val:
+                continue
+
+            # 포맷 적용 여부 분기
+            if fmt_key:
+                formatted = fmt(new_val, fmt_value[fmt_key])
+                self._set_item(r, c, formatted)
+            else:
                 self._set_item(r, c, new_val)
 
-        # 컬러는 side 또는 PnL이 바뀌면 다시 적용
+        # 컬러 재적용
         self._apply_color(r, new)
 
     # ----------------------------------------------------------

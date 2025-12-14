@@ -1,10 +1,9 @@
 from PyQt6.QtWidgets import QStyledItemDelegate
-from PyQt6.QtGui import QPen, QColor
+from PyQt6.QtGui import QColor, QBrush
 from PyQt6.QtCore import Qt
 
 
 class OrderbookDelegate(QStyledItemDelegate):
-
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -12,28 +11,30 @@ class OrderbookDelegate(QStyledItemDelegate):
         self.best_ask_row = None
         self.mid_row = None  # pivot row index
 
-        # 테두리 색상 (HTS 스타일)
-        self.best_bid_color = QColor("#4FC3F7")   # 청록색(파랑 계열)
-        self.best_ask_color = QColor("#EF5350")   # 빨강 계열
+        # 은은한 HTS 톤 (alpha 아주 낮게)
+        self.bid_bg = QColor(46, 204, 113, 35)   # green, very soft
+        self.ask_bg = QColor(231, 76, 60, 35)    # red, very soft
 
     def paint(self, painter, option, index):
         row = index.row()
 
-        # 기본 페인팅
+        # 🔥 기본 셀 렌더링
         super().paint(painter, option, index)
 
-        # ---- Pivot Row Border 제거 ----
+        # Pivot row는 Delegate에서 절대 건드리지 않음
         if row == self.mid_row:
-            return  # 테두리 그리지 않음
-
-        # ---- Best Bid / Best Ask 테두리만 유지 ----
-        if row == self.best_bid_row:
-            painter.setPen(QPen(QColor("#00C8FF"), 1))
-            painter.drawRect(option.rect)
             return
 
+        # Best Ask (위)
         if row == self.best_ask_row:
-            painter.setPen(QPen(QColor("#FF4D4D"), 1))
-            painter.drawRect(option.rect)
+            painter.save()
+            painter.fillRect(option.rect, QBrush(self.ask_bg))
+            painter.restore()
             return
 
+        # Best Bid (아래)
+        if row == self.best_bid_row:
+            painter.save()
+            painter.fillRect(option.rect, QBrush(self.bid_bg))
+            painter.restore()
+            return

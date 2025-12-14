@@ -3,8 +3,11 @@ from datetime import datetime
 from PyQt6 import QtWidgets, QtGui, QtCore
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
-from PyQt6.QtWidgets import QTableWidgetItem
+from PyQt6.QtWidgets import QTableWidgetItem, QHeaderView
 import time
+
+from ui.utils.formatter import fmt_time
+
 
 class ExecutionsTable(QtWidgets.QTableWidget):
 
@@ -15,7 +18,11 @@ class ExecutionsTable(QtWidgets.QTableWidget):
         self.setHorizontalHeaderLabels(
             ["Time", "Symbol", "Side", "Price", "Qty", "Fee", "Type"]
         )
-        self.horizontalHeader().setStretchLastSection(True)
+        header = self.horizontalHeader()
+
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Time
+        for col in range(1, self.columnCount()):
+            header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
 
         # 마지막 데이터 수 tracking → 신규 체결 감지용
         self.last_row_count = 0
@@ -37,7 +44,7 @@ class ExecutionsTable(QtWidgets.QTableWidget):
         self.setRowCount(new_row_count)
 
         for row, ex in enumerate(executions):
-            self._set_item(row, 0, ex["created_at"])
+            self._set_item(row, 0, fmt_time(ex["created_at"]))
             self._set_item(row, 1, ex["symbol"])
             self._set_item(row, 2, ex["side"])
             self._set_item(row, 3, f"{ex['price']}")
