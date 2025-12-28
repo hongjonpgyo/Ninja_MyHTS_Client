@@ -1,40 +1,71 @@
+# ui/widgets/executions_table.py
 from datetime import datetime
-
 from PyQt6 import QtWidgets, QtGui, QtCore
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
-from PyQt6.QtWidgets import QTableWidgetItem, QHeaderView
-import time
+from PyQt6.QtGui import QColor, QFont
+from PyQt6.QtWidgets import QHeaderView, QTableWidgetItem
 
 from ui.utils.formatter import fmt_time
 
 
 class ExecutionsTable(QtWidgets.QTableWidget):
+    """
+    - WS 체결 PUSH에 맞춰 append_row() 지원
+    - 전체 덮어쓰기(update_table)도 유지
+    - 신규 체결 highlight
+    - BUY/SELL 컬러
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self.setColumnCount(7)
-        self.setHorizontalHeaderLabels(
-            ["Time", "Symbol", "Side", "Price", "Qty", "Fee", "Type"]
-        )
-        header = self.horizontalHeader()
+        self.setHorizontalHeaderLabels(["Time", "Symbol", "Side", "Price", "Qty", "Fee", "Type"])
 
+        # UI 기본
+        self.verticalHeader().setVisible(False)
+        self.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self.setShowGrid(False)
+
+        header = self.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Time
         for col in range(1, self.columnCount()):
             header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
+        header.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # 마지막 데이터 수 tracking → 신규 체결 감지용
+        # 스타일(원하는 톤으로 조절 가능)
+        self.setStyleSheet("""
+        QTableWidget {
+            background-color: #1f1f1f;
+            color: #e0e0e0;
+            font-size: 12px;
+        }
+        QHeaderView::section {
+            background-color: #2b2b2b;
+            color: #cccccc;
+            font-size: 11px;
+            padding: 6px;
+            border: none;
+        }
+        QTableWidget::item:selected {
+            background-color: #0a46c7;
+            color: white;
+        }
+        """)
+
+        # 최근 row 수 tracking(옵션)
         self.last_row_count = 0
 
-    # ===================================================================
+        # Bold 폰트 (가격/심볼 등)
+        self.bold_font = QFont()
+        self.bold_font.setBold(True)
+
+    # -------------------------------------------------
+    # Public API 1) 전체 갱신
+    # -------------------------------------------------
     def update_table(self, executions: list[dict]):
-        """
-        executions: [
-            {"time": "...", "symbol": "...", "side": "...", ...},
-            ...
-        ]
-        """
         if not executions:
             return
 
@@ -44,131 +75,157 @@ class ExecutionsTable(QtWidgets.QTableWidget):
         self.setRowCount(new_row_count)
 
         for row, ex in enumerate(executions):
-            self._set_item(row, 0, fmt_time(ex["created_at"]))
-            self._set_item(row, 1, ex["symbol"])
-            self._set_item(row, 2, ex["side"])
-            self._set_item(row, 3, f"{ex['price']}")
-            self._set_item(row, 4, f"{ex['qty']}")
-            self._set_item(row, 5, f"{ex['fee']}")
-            self._set_item(row, 6, ex["type"])
+            self._draw_row(row, ex)
 
-            # 🎨 컬러 적용
-            self._color_side(row, ex["side"])
-
-        # 신규 체결 깜빡임 효과
         if is_new_data:
             self._highlight_new_row(new_row_count - 1)
 
         self.last_row_count = new_row_count
+        scrollbar = self.verticalScrollBar()
+        at_bottom = scrollbar.value() == scrollbar.maximum()
 
-    # ===================================================================
-    def _set_item(self, row, col, text):
-        item = QtWidgets.QTableWidgetItem(str(text))
-        item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.setItem(row, col, item)
+        if at_bottom:
+            scrollbar.setValue(scrollbar.maximum())
 
-    # ===================================================================
-    def _color_side(self, row, side):
-        """ BUY/SELL 색상 처리 """
-        item = self.item(row, 2)
-        if not item:
-            return
+    # -------------------------------------------------
+    # Public API 2) 실시간 append
+    # -------------------------------------------------
+    def append_row(self, data: dict):
+        table = self
+        scrollbar = table.verticalScrollBar()
+
+        # 🔥 사용자가 맨 아래를 보고 있었는지
+        at_bottom = scrollbar.value() == scrollbar.maximum()
+
+        row = table.rowCount()
+        table.insertRow(row)
+
+        created_at = data.get("created_at") or data.get("ts")
+        symbol = data.get("symbol", "")
+        side = data.get("side", "")
+        price = data.get("price")
+        qty = data.get("qty")
+        fee = data.get("fee", 0)
+        typ = data.get("type", "TRADE")
+
+        # 시간
+        time_text = fmt_time(created_at) if created_at else "--:--:--"
+
+        table.setItem(row, 0, QTableWidgetItem(time_text))
+        table.setItem(row, 1, QTableWidgetItem(symbol))
+        table.setItem(row, 2, QTableWidgetItem(side))
+        table.setItem(row, 3, QTableWidgetItem(self._fmt_price(price)))
+        table.setItem(row, 4, QTableWidgetItem(self._fmt_qty(qty)))
+        table.setItem(row, 5, QTableWidgetItem(self._fmt_fee(fee)))
+        table.setItem(row, 6, QTableWidgetItem(typ))
+
+        # 스타일
+        table.item(row, 1).setFont(self.bold_font)
+        self._color_side(row, side)
+        self._highlight_new_row(row)
+
+        # ✅ 맨 아래 보고 있을 때만 자동 스크롤
+        if at_bottom:
+            scrollbar.setValue(scrollbar.maximum())
+
+        # ✅ 원래 맨 아래 보고 있을 때만 자동 스크롤
+        if at_bottom:
+            scrollbar.setValue(scrollbar.maximum())
+
+    # -------------------------------------------------
+    # Row draw
+    # -------------------------------------------------
+    def _draw_row(self, row: int, ex: dict):
+        created_at = ex.get("created_at") or ex.get("ts") or ""
+        symbol = ex.get("symbol", "")
+        side = ex.get("side", "")
+        price = ex.get("price", "")
+        qty = ex.get("qty", "")
+        fee = ex.get("fee", 0)
+        typ = ex.get("type", "AUTO")
+
+        # 시간 포맷
+        time_text = fmt_time(created_at) if created_at else "--:--:--"
+
+        self._set_item(row, 0, time_text)
+        self._set_item(row, 1, symbol, bold=True)
+        self._set_item(row, 2, side)
+        self._set_item(row, 3, self._fmt_price(price), align=Qt.AlignmentFlag.AlignRight)
+        self._set_item(row, 4, self._fmt_qty(qty), align=Qt.AlignmentFlag.AlignRight)
+        self._set_item(row, 5, self._fmt_fee(fee), align=Qt.AlignmentFlag.AlignRight)
+        self._set_item(row, 6, typ)
+
+        # 컬러 처리
+        self._color_side(row, side)
+
+    # -------------------------------------------------
+    # Helpers
+    # -------------------------------------------------
+    def _set_item(self, row, col, text, align=None, bold=False):
+        item = self.item(row, col)
+        if item is None:
+            item = QTableWidgetItem()
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.setItem(row, col, item)
+
+        item.setText("" if text is None else str(text))
+
+        if align is None:
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+        else:
+            item.setTextAlignment(align | Qt.AlignmentFlag.AlignVCenter)
+
+        if bold:
+            item.setFont(self.bold_font)
+
+    def _color_side(self, row: int, side: str):
+        """BUY/SELL 컬러 + 가격 컬럼도 같이 컬러링"""
+        side = (side or "").upper()
+        side_item = self.item(row, 2)
+        price_item = self.item(row, 3)
 
         if side == "BUY":
-            item.setForeground(QtGui.QColor("#2ecc71"))   # 청록
+            fg = QColor("#2ecc71")
+        elif side == "SELL":
+            fg = QColor("#e74c3c")
         else:
-            item.setForeground(QtGui.QColor("#e74c3c"))   # 빨강
+            fg = QColor("#aaaaaa")
 
-    # ===================================================================
-    def _highlight_new_row(self, row):
-        """ 신규 체결이 들어오면 배경이 0.3초간 노란색 → 원래색으로 """
-        for col in range(self.columnCount()):
-            item = self.item(row, col)
-            if not item:
-                continue
-            item.setBackground(QtGui.QColor("#FFF59D"))  # 연노랑
+        if side_item:
+            side_item.setForeground(fg)
+        if price_item:
+            price_item.setForeground(fg)
 
-        # 0.3초 후 원래색으로 복귀
-        QtCore.QTimer.singleShot(300, lambda: self._clear_highlight(row))
-
-    def _clear_highlight(self, row):
+    def _highlight_new_row(self, row: int):
+        """0.25초간 하이라이트"""
         for col in range(self.columnCount()):
             item = self.item(row, col)
             if item:
-                item.setBackground(QtGui.QColor("#FFFFFF"))
+                item.setBackground(QColor(255, 245, 157, 60))  # 연노랑 투명
 
-    def append_row(self, ex: dict):
-        row = self.rowCount()
-        self.insertRow(row)
+        QtCore.QTimer.singleShot(250, lambda r=row: self._clear_highlight(r))
 
-        self._set_item(row, 0, ex["created_at"])
-        self._set_item(row, 1, ex["symbol"])
-        self._set_item(row, 2, ex["side"])
-        self._set_item(row, 3, ex["price"])
-        self._set_item(row, 4, ex["qty"])
-        self._set_item(row, 5, ex.get("fee", 0))
-        self._set_item(row, 6, ex.get("type", "AUTO"))
+    def _clear_highlight(self, row: int):
+        for col in range(self.columnCount()):
+            item = self.item(row, col)
+            if item:
+                item.setBackground(QColor("#1f1f1f"))
 
-        self._color_side(row, ex["side"])
-        self._highlight_new_row(row)
+    def _fmt_price(self, v):
+        try:
+            return f"{float(v):,.2f}"
+        except Exception:
+            return str(v)
 
-    def append_tick(self, price: float, side: str):
-        row = self.rowCount()
-        self.insertRow(row)
+    def _fmt_qty(self, v):
+        try:
+            # qty는 너무 길면 지저분해서 g로
+            return f"{float(v):g}"
+        except Exception:
+            return str(v)
 
-        time_str = datetime.now().strftime("%H:%M:%S")
-
-        self.setItem(row, 0, QTableWidgetItem(time_str))
-        self.setItem(row, 1, QTableWidgetItem(f"{price:,.2f}"))
-        self.setItem(row, 2, QTableWidgetItem("1"))
-        self.setItem(row, 3, QTableWidgetItem(side))
-
-        # 색상
-        if side == "BUY":
-            color = QColor("#ff4d4d")
-        else:
-            color = QColor("#4da6ff")
-
-        for c in range(4):
-            self.item(row, c).setForeground(color)
-            self.item(row, c).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # 최근 100개만 유지
-        if self.rowCount() > 100:
-            self.removeRow(0)
-
-    def append_trade(self, trade: dict):
-        """
-        trade = {
-            symbol, price, qty, side, ts
-        }
-        """
-        row = self.rowCount()
-        self.insertRow(row)
-
-        ts = trade.get("ts", 0)
-        price = trade["price"]
-        qty = trade["qty"]
-        side = trade["side"]
-
-        time_str = time.strftime(
-            "%H:%M:%S",
-            time.localtime(ts / 1000)
-        )
-
-        self.setItem(row, 0, QTableWidgetItem(time_str))
-        self.setItem(row, 1, QTableWidgetItem(side))
-        self.setItem(row, 2, QTableWidgetItem(f"{price:.2f}"))
-        self.setItem(row, 3, QTableWidgetItem(f"{qty:.4f}"))
-
-        # 색상
-        color = QColor("#2ecc71") if side == "BUY" else QColor("#e74c3c")
-        for c in range(4):
-            self.item(row, c).setForeground(color)
-            self.item(row, c).setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # 최근 N개 유지
-        if self.rowCount() > 200:
-            self.removeRow(0)
-
-        self.scrollToBottom()
+    def _fmt_fee(self, v):
+        try:
+            return f"{float(v):,.2f}"
+        except Exception:
+            return str(v)

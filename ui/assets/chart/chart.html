@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Chart</title>
+
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #1e1e1e;
+    overflow: hidden;
+}
+
+#chart {
+    width: 100%;
+    height: 100%;
+}
+</style>
+</head>
+
+<body>
+<div id="chart"></div>
+
+<!-- 🔥 반드시 먼저 로드 -->
+<script src="lightweight-charts.js"></script>
+
+<script>
+console.log("[chart] script start");
+
+let chart = null;
+let candleSeries = null;
+
+/* ============================
+   Chart 초기화
+============================ */
+function initChart() {
+    if (typeof LightweightCharts === "undefined") {
+        console.error("LightweightCharts not loaded");
+        return;
+    }
+
+    chart = LightweightCharts.createChart(
+        document.getElementById("chart"),
+        {
+            layout: {
+                background: { color: "#1e1e1e" },
+                textColor: "#d9d9d9",
+            },
+            grid: {
+                vertLines: { color: "#2b2b2b" },
+                horzLines: { color: "#2b2b2b" },
+            },
+            rightPriceScale: {
+                borderColor: "#444",
+            },
+            timeScale: {
+                borderColor: "#444",
+                timeVisible: true,
+                secondsVisible: false,
+            },
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Normal,
+            },
+        }
+    );
+
+    candleSeries = chart.addCandlestickSeries({
+        upColor: "#26a69a",
+        downColor: "#ef5350",
+        borderUpColor: "#26a69a",
+        borderDownColor: "#ef5350",
+        wickUpColor: "#26a69a",
+        wickDownColor: "#ef5350",
+    });
+
+    resizeChart();
+    console.log("[chart] initialized");
+}
+
+/* ============================
+   외부(Python)에서 호출용 API
+============================ */
+window.setCandles = function (candles) {
+    if (!candleSeries) {
+        console.warn("setCandles called before chart ready");
+        return;
+    }
+
+    candleSeries.setData(candles);
+};
+
+window.resizeChart = function () {
+    if (!chart) return;
+    const el = document.getElementById("chart");
+    chart.applyOptions({
+        width: el.clientWidth,
+        height: el.clientHeight,
+    });
+};
+
+/* ============================
+   이벤트
+============================ */
+window.addEventListener("resize", () => {
+    resizeChart();
+});
+
+window.addEventListener("load", () => {
+    initChart();
+});
+</script>
+</body>
+</html>

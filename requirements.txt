@@ -1,3 +1,5 @@
+httpx
+yfinance
 pyqt6-sip
 PyQt6
 requests

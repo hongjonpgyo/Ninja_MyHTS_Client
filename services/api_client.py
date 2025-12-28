@@ -1,6 +1,7 @@
 # services/api_client.py
-import aiohttp
 import httpx
+import requests
+
 from config.settings import REST_URL
 
 
@@ -21,6 +22,9 @@ class APIClient:
 
     def set_token(self, token):
         self.token = token
+
+    def clear_token(self):
+        self.token = None
 
     # ======================================================
     # GET
@@ -104,3 +108,42 @@ class APIClient:
     #
     # async def cancel_orders(self, order_ids):
     #     return await self.post("/orders/cancel_bulk", {"order_ids": order_ids})
+
+    # ✅ 아이디 찾기
+    def find_id(self, email: str) -> dict:
+        url = f"{self.base_url}/auth/find-id"
+        payload = {"email": email}
+
+        res = requests.post(url, json=payload, headers=self._headers(), timeout=5)
+
+        if res.status_code != 200:
+            raise Exception("아이디 찾기 실패")
+
+        return res.json()
+
+    # -------------------------
+    # PASSWORD RESET
+    # -------------------------
+    async def reset_password(self, token: str, new_password: str):
+        data = await self.post(
+            "/auth/password/reset/confirm",
+            {
+                "token": token,
+                "new_password": new_password
+            }
+        )
+        if not data.get("ok"):
+            raise Exception(data.get("message", "비밀번호 변경 실패"))
+        return data
+
+    async def request_password_reset(self, email: str) -> dict:
+        # 로그인 없이 호출되는 공개 API
+        return await self.post("/auth/password/reset/request", json={"email": email})
+
+    async def confirm_password_reset(self, token: str, new_password: str) -> dict:
+        # 로그인 없이 호출되는 공개 API
+        return await self.post(
+            "/auth/password/reset/confirm",
+            json={"token": token, "new_password": new_password},
+        )
+

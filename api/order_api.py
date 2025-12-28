@@ -4,7 +4,8 @@ from config.settings import REST_URL
 
 class OrderApi:
 
-    def __init__(self):
+    def __init__(self, api_client):
+        self.api = api_client
         self.base = REST_URL
 
     # -------------------------------
@@ -33,11 +34,15 @@ class OrderApi:
     # API 함수들
     # ======================================================
 
+    # -------------------------------
     # 미체결 주문 조회
-    def get_open_orders(self, account_id: int):
-        return self._get(f"/orders/open/{account_id}")
+    # -------------------------------
+    async def get_open_orders(self, account_id: int):
+        return await self.api.get(f"/orders/open/{account_id}")
 
+    # -------------------------------
     # 주문 취소 (복수)
-    def cancel_orders(self, order_ids: list[int]):
+    # -------------------------------
+    async def cancel_orders(self, order_ids: list[int]):
         payload = {"order_ids": order_ids}
-        return self._post("/orders/cancel_orders", json=payload)
+        return await self.api.post("/orders/cancel_orders", json=payload)

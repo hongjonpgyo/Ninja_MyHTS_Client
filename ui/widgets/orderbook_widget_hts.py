@@ -2,13 +2,17 @@ from PyQt6.QtWidgets import QTableWidgetItem, QHeaderView
 from PyQt6.QtGui import QColor, QBrush
 from PyQt6.QtCore import Qt
 
+from ui.settings.trade_setting import OrderClickMode
 from ui.widgets.orderbook_delegate import OrderbookDelegate
 
+from config.settings import LMT_BUY_COL, LMT_SELL_COL, MIT_SELL_COL, MIT_BUY_COL
 
 class OrderbookWidgetHTS:
-    def __init__(self, table, depth_rows=10):
+    def __init__(self, table, trade_setting, depth_rows=10):
         self.table = table
         self.depth_rows = depth_rows
+        self.trade_setting = trade_setting
+
 
         self.total_rows = depth_rows * 2 + 1
         self.mid_row = depth_rows
@@ -20,6 +24,9 @@ class OrderbookWidgetHTS:
         self.table.setItemDelegate(self.delegate)
 
         self.setup()
+
+        self.table.cellClicked.connect(self.on_cell_clicked)
+        self.table.cellDoubleClicked.connect(self.on_cell_double_clicked)
 
     # ---------------------------------------------------------
     # Table Setup
@@ -150,6 +157,8 @@ class OrderbookWidgetHTS:
     # Depth Coloring (면 기반)
     # ---------------------------------------------------------
     def _apply_ask_depth(self, row, qty, max_qty):
+        # ✅ 항상 초기화
+        self._cell_bg(row, 3, QColor("#1e1e1e"))
         if qty <= 0:
             return
         ratio = min(qty / max_qty, 1.0)
@@ -157,6 +166,8 @@ class OrderbookWidgetHTS:
         self._cell_bg(row, 3, QColor(231, 76, 60, alpha))  # red
 
     def _apply_bid_depth(self, row, qty, max_qty):
+        # ✅ 항상 초기화
+        self._cell_bg(row, 3, QColor("#1e1e1e"))
         if qty <= 0:
             return
         ratio = min(qty / max_qty, 1.0)
@@ -207,3 +218,62 @@ class OrderbookWidgetHTS:
             if item:
                 item.setText("")
                 item.setBackground(QBrush(QColor("#1e1e1e")))
+
+    def on_cell_clicked(self, row, col):
+        self._handle_orderbook_click(row, col, click_type="single")
+
+    def on_cell_double_clicked(self, row, col):
+        self._handle_orderbook_click(row, col, click_type="double")
+
+    def _increase_my_order(self, symbol, price, side):
+        book = self.my_orders.setdefault(symbol, {})
+        side_map = book.setdefault(side, {})
+        side_map[price] = side_map.get(price, 0) + 1
+
+    def _update_orderbook_my_count(self, symbol, price, side):
+        row = self._find_row_by_price(price)
+        if row is None:
+            return
+
+        col = COL_SELL_CNT if side == "SELL" else COL_BUY_CNT
+
+        cnt = self.my_orders[symbol][side][price]
+
+        item = self.tableOrderbook.item(row, col)
+        if not item:
+            item = QTableWidgetItem()
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.tableOrderbook.setItem(row, col, item)
+
+        item.setText(str(cnt))
+        item.setForeground(QColor("#ffd54f"))  # 내 주문 강조
+
+    def _place_entry_from_orderbook(self, row, side):
+        price = self._get_price_from_row(row)
+        qty = self.order_panel.get_qty()
+
+        self.main_window.enqueue_async(
+            self.main_window.order_controller.place_limit_order(
+                symbol=self.current_symbol,
+                side=side,
+                price=price,
+                qty=qty
+            )
+        )
+
+        self._increase_my_order(self.current_symbol, price, side)
+        self._update_orderbook_my_count(self.current_symbol, price, side)
+
+    def _handle_orderbook_click(self, row, col, click_type):
+        mode = self.trade_setting.order_click_mode
+        print(mode)
+        if mode == OrderClickMode.SINGLE and click_type != "single":
+            return
+        if mode == OrderClickMode.DOUBLE and click_type != "double":
+            return
+
+        # if col == LMT_SELL_COL:
+        #     self.place_order(row, "SELL")
+        # elif col == LMT_BUY_COL:
+        #     self.place_order(row, "BUY")
+

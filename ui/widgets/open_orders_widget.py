@@ -71,14 +71,22 @@ class OpenOrdersWidget(QtWidgets.QWidget):
         self.table.setShowGrid(False)
 
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        header.resizeSection(0, 110)
-        header.resizeSection(1, 70)
-        header.resizeSection(2, 100)
-        header.resizeSection(3, 60)
-        header.resizeSection(4, 90)
-        header.resizeSection(5, 70)
-        header.resizeSection(6, 70)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        # 중요 컬럼만 비율 조정
+        header.setStretchLastSection(False)
+        header.resizeSection(0, 120)  # Symbol
+        header.resizeSection(1, 80)  # Side
+        header.resizeSection(2, 120)  # Price
+        header.resizeSection(3, 70)  # Qty
+        header.resizeSection(4, 120)  # Time
+        header.resizeSection(5, 90)  # OrderID
+        header.resizeSection(6, 90)  # Status
+
+
+        self.table.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
 
         self.table.setStyleSheet("""
         QTableWidget {
@@ -182,24 +190,24 @@ class OpenOrdersWidget(QtWidgets.QWidget):
         # =================================================
         # Signals / Timer
         # =================================================
-        self.btnRefresh.clicked.connect(self.refresh)
+        # self.btnRefresh.clicked.connect(self.refresh)
         self.btnCancel.clicked.connect(self.cancel_selected_orders)
 
-        self.timer = QtCore.QTimer(self)
-        self.timer.timeout.connect(self.refresh)
-        self.timer.start(1000)
+        # self.timer = QtCore.QTimer(self)
+        # # self.timer.timeout.connect(self.refresh)
+        # self.timer.start(1000)
 
-        self.refresh()
+        # self.refresh()
 
     # -------------------------------------------------
-    def refresh(self):
-        try:
-            orders = self.order_api.get_open_orders(self.account_id)
-            if isinstance(orders, list):
-                self._update_summary(orders)
-                self.update_table(orders)
-        except Exception as e:
-            print("[OpenOrdersWidget] refresh error:", e)
+    # def refresh(self):
+    #     try:
+    #         orders = self.order_api.get_open_orders(self.account_id)
+    #         if isinstance(orders, list):
+    #             self._update_summary(orders)
+    #             self.update_table(orders)
+    #     except Exception as e:
+    #         print("[OpenOrdersWidget] refresh error:", e)
 
     # -------------------------------------------------
     def _update_summary(self, orders):
@@ -216,15 +224,25 @@ class OpenOrdersWidget(QtWidgets.QWidget):
         )
 
     # -------------------------------------------------
-    def _set_item(self, r, c, v):
+    def _set_item(self, r, c, v, *, fg="#e0e0e0", align=QtCore.Qt.AlignmentFlag.AlignCenter, bold=False):
         item = QTableWidgetItem("" if v is None else str(v))
-        item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        item.setTextAlignment(align | QtCore.Qt.AlignmentFlag.AlignVCenter)
+        item.setFlags(item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable)
+        item.setForeground(QtGui.QColor(fg))
+
+        if bold:
+            font = item.font()
+            font.setBold(True)
+            item.setFont(font)
+
         self.table.setItem(r, c, item)
         return item
 
     # -------------------------------------------------
     def update_table(self, orders):
         self.table.setRowCount(len(orders))
+
+        current_symbol = getattr(self, "current_symbol", None)
 
         for r, o in enumerate(orders):
             symbol = o.get("symbol", "")
@@ -236,22 +254,24 @@ class OpenOrdersWidget(QtWidgets.QWidget):
             status = o.get("status", "OPEN")
 
             self._set_item(r, 0, symbol)
-
             side_item = self._set_item(r, 1, side)
-            side_item.setForeground(
-                QtGui.QColor("#2ecc71" if side == "BUY" else "#e74c3c")
-            )
-
             price_item = self._set_item(r, 2, price)
-            price_item.setForeground(QtGui.QColor("#f1c40f"))
-
             self._set_item(r, 3, qty)
             self._set_item(r, 4, time)
             self._set_item(r, 5, oid)
-
             st = self._set_item(r, 6, f" {status} ")
-            st.setForeground(QtGui.QColor("#dddddd"))
-            st.setBackground(QtGui.QColor("#3a3a3a"))
+
+            # BUY / SELL 컬러
+            side_color = QtGui.QColor("#2ecc71" if side == "BUY" else "#e74c3c")
+            side_item.setForeground(side_color)
+            price_item.setForeground(QtGui.QColor("#f1c40f"))
+
+            # ✅ 현재 심볼 강조
+            if current_symbol and symbol == current_symbol:
+                for c in range(self.table.columnCount()):
+                    it = self.table.item(r, c)
+                    if it:
+                        it.setBackground(QtGui.QColor(0, 120, 215, 60))
 
     # -------------------------------------------------
     def cancel_selected_orders(self):

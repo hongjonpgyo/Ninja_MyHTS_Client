@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SignupDialog</class>
+ <widget class="QDialog" name="SignupDialog">
+  <property name="windowTitle">
+   <string>회원가입</string>
+  </property>
+  <property name="fixedSize">
+   <size>
+    <width>420</width>
+    <height>360</height>
+   </size>
+  </property>
+
+  <layout class="QVBoxLayout" name="rootLayout" spacing="14">
+   <!-- Title -->
+   <item>
+    <widget class="QLabel" name="labelTitle">
+     <property name="text">
+      <string>HTS 회원가입</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">
+       font-size:18px;
+       font-weight:600;
+      </string>
+     </property>
+    </widget>
+   </item>
+
+   <!-- Email -->
+   <item>
+    <widget class="QLineEdit" name="editEmail">
+     <property name="placeholderText">
+      <string>Email (아이디로 사용)</string>
+     </property>
+    </widget>
+   </item>
+
+   <!-- Password -->
+   <item>
+    <widget class="QLineEdit" name="editPassword">
+     <property name="placeholderText">
+      <string>비밀번호 (8자 이상)</string>
+     </property>
+     <property name="echoMode">
+      <enum>QLineEdit::Password</enum>
+     </property>
+    </widget>
+   </item>
+
+   <!-- Confirm -->
+   <item>
+    <widget class="QLineEdit" name="editPasswordConfirm">
+     <property name="placeholderText">
+      <string>비밀번호 확인</string>
+     </property>
+     <property name="echoMode">
+      <enum>QLineEdit::Password</enum>
+     </property>
+    </widget>
+   </item>
+
+   <!-- Terms -->
+   <item>
+    <widget class="QCheckBox" name="chkAgree">
+     <property name="text">
+      <string>이용약관 및 개인정보 처리방침에 동의합니다</string>
+     </property>
+    </widget>
+   </item>
+
+   <!-- Status -->
+   <item>
+    <widget class="QLabel" name="labelStatus">
+     <property name="text">
+      <string></string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">
+       font-size:12px;
+       color:#e74c3c;
+      </string>
+     </property>
+    </widget>
+   </item>
+
+   <!-- Buttons -->
+   <item>
+    <layout class="QHBoxLayout" spacing="10">
+     <item>
+      <widget class="QPushButton" name="btnCancel">
+       <property name="text">
+        <string>취소</string>
+       </property>
+                 <property name="styleSheet">
+        <string notr="true">
+        background:#3498db; color:white; font-weight:bold; height:32px;
+        </string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnSignup">
+       <property name="text">
+        <string>회원가입</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+         background:#27ae60; color:white; font-weight:bold; height:32px;
+        </string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

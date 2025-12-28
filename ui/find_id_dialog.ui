@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>FindIdDialog</class>
+ <widget class="QDialog" name="FindIdDialog">
+  <property name="windowTitle">
+   <string>아이디 찾기</string>
+  </property>
+  <property name="fixedSize">
+   <size>
+    <width>380</width>
+    <height>260</height>
+   </size>
+  </property>
+
+  <layout class="QVBoxLayout" spacing="14">
+
+   <item>
+    <widget class="QLabel">
+     <property name="text">
+      <string>아이디 찾기</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">font-size:17px; font-weight:600;</string>
+     </property>
+    </widget>
+   </item>
+
+   <item>
+    <widget class="QLineEdit" name="editEmail">
+     <property name="placeholderText">
+      <string>가입 시 사용한 이메일</string>
+     </property>
+    </widget>
+   </item>
+
+   <item>
+    <widget class="QLabel" name="labelResult">
+     <property name="text">
+      <string></string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">font-size:12px;</string>
+     </property>
+    </widget>
+   </item>
+
+   <item>
+    <layout class="QHBoxLayout" spacing="10">
+     <item>
+      <widget class="QPushButton" name="btnCancel">
+       <property name="text">
+        <string>닫기</string>
+       </property>
+          <property name="styleSheet">
+        <string notr="true">
+        background:#3498db; color:white; font-weight:bold; height:32px;
+        </string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnFind">
+       <property name="text">
+        <string>아이디 찾기</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+        background:#27ae60; color:white; font-weight:bold; height:32px;
+        </string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+
+  </layout>
+ </widget>
+</ui>

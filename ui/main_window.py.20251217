@@ -6,14 +6,13 @@ from PyQt6.QtWidgets import QMainWindow, QSizePolicy
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer
 
-from config.settings import YAHOO_SYMBOL_MAP, BINANCE_SYMBOLS
+from config.settings import YAHOO_SYMBOL_MAP
 from services.price_feed_manager import PriceFeedManager
-from services.execution_ws_client import ExecutionWSClient
-from services.account_ws_client import AccountWSClient
-from services.trade_ws_client import TradesWSClient
 from services.ws_client import (
     PriceWSClient,
-    # TradesWSClient,
+    ExecutionWSClient,
+    AccountWSClient,
+    TradesWSClient,
 )
 
 from api.account_api import AccountApi
@@ -27,15 +26,12 @@ from ui.controllers.price_controller import PriceController
 from ui.controllers.watchlist_controller import WatchlistController
 from ui.controllers.background_controller import BackgroundController
 from ui.controllers.time_sales_controller import TimeSalesController
-from ui.controllers.execution_strength import ExecutionStrength
-from ui.settings.trade_setting import UserTradeSetting
 
 from ui.widgets.order_panel import OrderPanel
 from ui.widgets.position_table import PositionsTable
 from ui.widgets.balance_widget import BalanceWidget
 from ui.widgets.open_orders_widget import OpenOrdersWidget
 from ui.widgets.executions_table import ExecutionsTable
-from ui.widgets.preferences_dialog import PreferencesDialog
 from ui.widgets.toast import ToastMessage
 from ui.widgets.orderbook_widget_hts import OrderbookWidgetHTS
 from ui.widgets.chart_popup import ChartPopup
@@ -57,32 +53,28 @@ class MainWindow(QMainWindow):
         self._queue = asyncio.Queue()
         self._worker_task = asyncio.create_task(self._queue_worker())
 
-        self.trade_setting = UserTradeSetting()
-
         # -------------------------
         # API / 상태
         # -------------------------
-        # 얇은 API 래퍼들
-        self.account_api = AccountApi(self.api)
-        self.position_api = PositionApi(self.api)
-        self.order_api = OrderApi(self.api)
+        self.order_api = OrderApi()
+        self.account_api = AccountApi()
+        self.position_api = PositionApi()
 
         self.user = None
         self.account_id = None
         self.current_symbol = "BTCUSDT"
         self.running = True
-        self._fetching_open_orders = False
 
         # -------------------------
         # UI 구성
         # -------------------------
-        self.order_panel = OrderPanel(main_window=self, parent=self)
+        self.order_panel = OrderPanel(self)
         self.orderPanelBodyLayout.addWidget(self.order_panel)
 
         self.watchlist_controller = WatchlistController(table=self.tableWatchlist)
         self.watchlist_controller.load_default()
 
-        self.orderbook = OrderbookWidgetHTS(table=self.tableOrderbook, trade_setting=self.trade_setting)
+        self.orderbook = OrderbookWidgetHTS(self.tableOrderbook)
         self.tableOrderbook.cellClicked.connect(self.on_orderbook_click)
 
         self.tableWatchlist.setSizePolicy(
@@ -92,11 +84,11 @@ class MainWindow(QMainWindow):
 
         self.bg_controller = BackgroundController(self, interval=0.5)
 
-        # self.symbol_controller = SymbolController(
-        #     combo=self.symbolCombo,
-        #     on_change=self.change_symbol
-        # )
-        # self.symbol_controller.load_default()
+        self.symbol_controller = SymbolController(
+            combo=self.symbolCombo,
+            on_change=self.change_symbol
+        )
+        self.symbol_controller.load_default()
 
         self.order_controller = OrderController(
             main_window=self,
@@ -119,7 +111,6 @@ class MainWindow(QMainWindow):
         self.executionsLayout.addWidget(self.executions_table)
 
         self.chart_popup = None
-        self.btnSetting.clicked.connect(self.open_preferences)
         self.btnOpenChart.clicked.connect(self.on_open_chart)
         self.btnLogout.clicked.connect(self.logout)
 
@@ -136,7 +127,7 @@ class MainWindow(QMainWindow):
         )
 
         self.top_Bar.comboSymbol.currentTextChanged.connect(
-            lambda symbol: self.enqueue_async(self.change_symbol(symbol))
+            self.change_symbol
         )
 
         # 2) Feed Manager
@@ -169,8 +160,6 @@ class MainWindow(QMainWindow):
 
         self.splitterTop.setStretchFactor(0, 5)  # Orderbook
         self.splitterTop.setStretchFactor(1, 4)  # Time&Sales
-
-        self.exec_strength = ExecutionStrength(window_sec=5)
 
     # -------------------------
     # ✅ 안전 UI
@@ -220,27 +209,23 @@ class MainWindow(QMainWindow):
 
         # ✅ WS / BG는 모두 enqueue_async + 함수 참조
         self.enqueue_async(self._start_price_ws())
-        # self.enqueue_async(self._start_trade_ws())
+        self.enqueue_async(self._start_trade_ws())
 
         self.bg_controller.start()
 
         self.exec_ws = ExecutionWSClient(
-            token=token,  # ✅ 추가
-            account_id=account_id,
-            callback=self.safe_ui_handle_execution,
-            main_window=self,
+            account_id,
+            self.safe_ui_handle_execution,
+            main_window=self
         )
-
         self.account_ws = AccountWSClient(
-            token=token,  # ✅ 추가
-            account_id=account_id,
-            callback=self.safe_ui_update_account_ws,
-            main_window=self,
+            account_id,
+            self.safe_ui_update_account_ws,
+            main_window=self
         )
 
         self.enqueue_async(self.exec_ws.start())
         self.enqueue_async(self.account_ws.start())
-        self.enqueue_async(self._start_trade_ws_initial())  # ✅ 추가
 
         self.show()
 
@@ -262,31 +247,28 @@ class MainWindow(QMainWindow):
         await self.ws.start()
 
     def start_price_ws(self):
-        if self.current_symbol not in BINANCE_SYMBOLS:
-            print(f"[WS] start_price_ws skipped: {self.current_symbol}")
-            return
-
         self.enqueue_async(self._start_price_ws())
-    # async def _start_trade_ws(self):
-    #     print("[WS] start_trade_ws")
-    #
-    #     # 기존 WS 정리
-    #     if hasattr(self, "trade_ws") and self.trade_ws:
-    #         await self.trade_ws.stop()
-    #
-    #     # Time & Sales 초기화
-    #     self.time_sales_controller.clear()
-    #
-    #     # 새 WS 생성
-    #     self.trade_ws = TradesWSClient(
-    #         symbol=self.current_symbol,
-    #         callback=self._on_trade_ws,
-    #         main_window=self
-    #     )
-    #     await self.trade_ws.start()
-    #
-    # def start_trade_ws(self):
-    #     self.enqueue_async(self._start_trade_ws())
+
+    async def _start_trade_ws(self):
+        print("[WS] start_trade_ws")
+
+        # 기존 WS 정리
+        if hasattr(self, "trade_ws") and self.trade_ws:
+            await self.trade_ws.stop()
+
+        # Time & Sales 초기화
+        self.time_sales_controller.clear()
+
+        # 새 WS 생성
+        self.trade_ws = TradesWSClient(
+            symbol=self.current_symbol,
+            callback=self._on_trade_ws,
+            main_window=self
+        )
+        await self.trade_ws.start()
+
+    def start_trade_ws(self):
+        self.enqueue_async(self._start_trade_ws())
 
     def _on_price_ws(self, data: dict):
         # 서버 payload에 symbol이 없을 수 있으니 강제 주입
@@ -295,25 +277,12 @@ class MainWindow(QMainWindow):
         self.price_controller.on_price(data)
 
     def _on_trade_ws(self, data: dict):
-        print("[ON_TRADE_WS RAW]", data)
-
-        # type 체크 제거
-        if not isinstance(data, dict):
+        print("[ON_TRADE_WS RAW]", data)  # 🔥 무조건
+        if data.get("type") != "trade":
             return
 
-        # 🔥 체결 강도 누적
-        self.exec_strength.add_trade(data)
-
-        strength = self.exec_strength.calc()
-
-        # UI 업데이트
         self.safe_ui(
-            self.top_Bar.update_exec_strength,
-            strength
-        )
-
-        self.safe_ui(
-            self.time_sales_controller.on_trade,
+            self.time_sales_controller.on_trade,  # ❗ 호출 ❌, 참조 ✅
             data
         )
 
@@ -326,10 +295,6 @@ class MainWindow(QMainWindow):
             item = self.tableOrderbook.item(row, PRICE_COL)
             if not item:
                 return
-
-            text = item.text().strip()
-            if not text:
-                return  # 🔥 빈 값이면 그냥 무시
 
             price = float(item.text().replace(",", ""))
             price = self.order_panel._round_to_tick(price)
@@ -383,9 +348,8 @@ class MainWindow(QMainWindow):
         symbol = self.current_symbol
         row = next((p for p in positions if p.get("symbol") == symbol), None)
 
-        if row is None or abs(row.get("qty", 0)) == 0:
+        if row is None:
             self.order_panel.reset_position()
-            self.order_panel._reset_all_close_button()  # ✅ 여기!
             return
 
         self.order_panel.update_position(row)
@@ -393,29 +357,10 @@ class MainWindow(QMainWindow):
     # -------------------------
     # Execution WS
     # -------------------------
-    def safe_ui_handle_execution(self, msg: dict):
-        # msg = {"type":"execution", "data":{...}}
-        if msg.get("type") == "execution":
-            data = msg.get("data", {}) or {}
-        else:
-            data = msg or {}
-
-        if not data:
-            return
-
-        # 테이블 append
-        self.executions_table.append_row({
-            "created_at": data.get("ts"),
-            "symbol": data.get("symbol"),
-            "side": data.get("side"),
-            "price": data.get("price"),
-            "qty": data.get("qty"),
-            "fee": data.get("fee", 0),
-            "type": "AUTO",
-        })
-
+    def safe_ui_handle_execution(self, data):
+        self.executions_table.append_row(data)
         self.show_toast(
-            f"{data.get('symbol')} {data.get('side')} {data.get('qty')} @ {data.get('price')} 체결"
+            f"{data['symbol']} {data['side']} {data['qty']} @ {data['price']} 체결"
         )
 
     def show_toast(self, text: str):
@@ -424,98 +369,34 @@ class MainWindow(QMainWindow):
     # -------------------------
     # Symbol change
     # -------------------------
-    async def change_symbol(self, symbol):
-        symbol = symbol.upper()
-
+    def change_symbol(self, symbol):
         if symbol == self.current_symbol:
             return
 
         print(f"[SYMBOL] {self.current_symbol} → {symbol}")
         self.current_symbol = symbol
 
-        # ------------------------
-        # 1️⃣ UI / Price 리셋
-        # ------------------------
         self.price_controller.set_symbol(symbol)
 
         self.order_panel.reset_position()
         self.order_panel.set_symbol(symbol)
+
+        # 주문패널 가격 잠금 해제
         self.order_panel.price_locked = False
 
         self.price_controller.reset()
 
-        # ------------------------
-        # 2️⃣ 🔥 Price WS 분기
-        # ------------------------
-        if symbol in BINANCE_SYMBOLS:
-            await self._start_price_ws()
-        else:
-            if self.ws:
-                await self.ws.stop()
-                self.ws = None
-
-            print(f"[PRICE WS] skipped (non-binance): {symbol}")
-            # Yahoo / Synthetic feeder가 price_controller 갱신
-
-        # ------------------------
-        # 3️⃣ Trade WS (항상)
-        # ------------------------
-        if self.trade_ws:
-            await self.trade_ws.stop()
-
-        self.time_sales_controller.clear()
-
-        self.trade_ws = TradesWSClient(
-            symbol=symbol,
-            callback=self._on_trade_ws
-        )
-        await self.trade_ws.start()
-
-        # ------------------------
-        # 4️⃣ 🔥🔥 핵심: 포지션 재조회
-        # ------------------------
-        try:
-            pos = await self.position_api.get_position(
-                self.account_id,
-                symbol
-            )
-
-            if pos:
-                self.order_panel.update_position(pos)
-            else:
-                self.order_panel.reset_position()
-        except Exception as e:
-            print("[change_symbol] position fetch error:", e)
-
-    async def _start_trade_ws_initial(self):
-        # 이미 열려 있으면 무시
-        if self.trade_ws:
-            return
-
-        print("[WS] start_trade_ws (initial)")
-
-        self.time_sales_controller.clear()
-
-        self.trade_ws = TradesWSClient(
-            symbol=self.current_symbol,
-            callback=self._on_trade_ws,
-        )
-        await self.trade_ws.start()
+        self.start_price_ws()
+        self.start_trade_ws()
 
     # -------------------------
     # Fetchers (BackgroundController가 큐로 호출)
     # -------------------------
     async def fetch_open_orders(self):
         try:
-            if self._fetching_open_orders:
-                return
-            self._fetching_open_orders = True
-            try:
-                orders = await self.order_api.get_open_orders(self.account_id)
+            orders = await asyncio.to_thread(self.order_api.get_open_orders, self.account_id)
+            if getattr(self, "open_orders_widget", None):
                 self.safe_ui(self.open_orders_widget.update_table, orders)
-            finally:
-                self._fetching_open_orders = False
-
         except Exception as e:
             print("[fetch_open_orders ERROR]", e)
 
@@ -528,36 +409,12 @@ class MainWindow(QMainWindow):
 
     async def fetch_orderbook(self):
         try:
-            data = await self.api.get(
-                f"/orderbook/{self.current_symbol}/{self.account_id}"
-            )
-
+            data = await self.api.get(f"/orderbook/merged3/{self.current_symbol}/{self.account_id}")
             bids = data.get("bids", [])
             asks = data.get("asks", [])
-            mid = data.get("mid")
-
-            if not bids and not asks:
-                return
-
-            if mid is not None:
-                self.safe_ui(self.price_controller.on_price, {
-                    "symbol": self.current_symbol,
-                    "price": mid,
-                    "bid": mid,
-                    "ask": mid,
-                })
-
             self.safe_ui(self.orderbook.update_depth, bids, asks)
-
         except Exception as e:
             print("[fetch_orderbook ERROR]", e)
-
-    def open_preferences(self):
-        dlg = PreferencesDialog(
-            setting=self.trade_setting,
-            parent=self
-        )
-        dlg.exec()
 
     def on_open_chart(self):
         symbol = self.current_symbol  # 예: "BTCUSDT"
@@ -603,38 +460,13 @@ class MainWindow(QMainWindow):
             if getattr(self, "account_ws", None):
                 await self.account_ws.stop()
 
-            if getattr(self, "trade_ws", None):
+            if getattr(self, "trades_ws", None):
                 await self.trade_ws.stop()
 
             self._queue.put_nowait(None)
         finally:
             if getattr(self, "_worker_task", None):
                 self._worker_task.cancel()
-
-    async def close_symbol_position(self):
-        try:
-            await asyncio.to_thread(
-                self.position_api.close_symbol,
-                self.account_id,
-                self.current_symbol
-            )
-            self.show_toast(f"{self.current_symbol} 종목 청산")
-        except Exception as e:
-            print("[Symbol Close ERROR]", e)
-
-    # MainWindow
-    def request_all_close(self):
-        self.enqueue_async(self.close_all_positions())
-
-    async def close_all_positions(self):
-        try:
-            await asyncio.to_thread(
-                self.position_api.close_all,
-                self.account_id
-            )
-            self.show_toast("🚨 전체 포지션 청산")
-        except Exception as e:
-            print("[All Close ERROR]", e)
 
     def closeEvent(self, event):
         self.running = False

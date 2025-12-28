@@ -1,0 +1,282 @@
+from config.settings import DEFAULT_SYMBOLS
+from PyQt6.QtCore import Qt, QTimer
+from datetime import datetime
+
+# ui/widgets/top_bar.py
+from PyQt6.QtWidgets import (
+    QFrame, QLabel, QComboBox,
+    QHBoxLayout, QVBoxLayout
+)
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor, QFont
+
+
+class TopBarWidget(QFrame):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self._setup_ui()
+        self._apply_style()
+        self.set_dummy_data()   # 🔥 일단 더미부터
+
+        self.clock_timer = QTimer(self)
+        self.clock_timer.timeout.connect(self._update_clock)
+        self.clock_timer.start(1000)
+        self._update_clock()
+
+    # -------------------------------------------------
+    def _setup_ui(self):
+        self.setFixedHeight(40)
+
+        root = QHBoxLayout(self)
+        root.setContentsMargins(12, 4, 12, 4)
+        root.setSpacing(14)
+
+        # ===============================
+        # LEFT : Symbol + Price
+        # ===============================
+        left = QHBoxLayout()
+        left.setSpacing(10)
+
+        self.comboSymbol = QComboBox()
+        self.comboSymbol.addItems(DEFAULT_SYMBOLS)
+        self.comboSymbol.setFixedWidth(100)
+
+        self.labelPrice = QLabel("2,965.94")
+        self.labelPrice.setFont(self._font(18, bold=True))
+        self.labelPrice.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
+        self.labelChange = QLabel("-1.41 (-0.05%)")
+        self.labelChange.setFont(self._font(11))
+
+        left.addWidget(self.comboSymbol)
+        left.addWidget(self.labelPrice)
+        left.addWidget(self.labelChange)
+
+        # ===============================
+        # MIDDLE : Stats
+        # ===============================
+        mid = QHBoxLayout()
+        mid.setSpacing(16)
+
+        self.labelHigh = QLabel("고가 --")
+        self.labelLow = QLabel("저가 --")
+        self.labelVolume = QLabel("거래량 --")
+        self.labelFunding = QLabel("펀딩 --")
+
+        # 🔥 Spread
+        self.labelSpread = QLabel("스프레드 --")
+        self.labelSpread.setFont(self._font(11))
+
+        for w in (
+                self.labelHigh,
+                self.labelLow,
+                self.labelVolume,
+                self.labelFunding,
+                self.labelSpread,
+        ):
+            w.setFont(self._font(11))
+            mid.addWidget(w)
+
+        # ===============================
+        # RIGHT : Status
+        # ===============================
+        right = QHBoxLayout()
+        right.setSpacing(8)
+
+        self.labelLive = QLabel("● LIVE")
+        self.labelWs = QLabel("WS 12ms")
+
+        self.labelLive.setFont(self._font(11, bold=True))
+        self.labelWs.setFont(self._font(11))
+
+        self.labelClock = QLabel("--:--:--")
+        self.labelClock.setFont(self._font(11))
+
+        # 🔥 체결 강도
+        self.labelExecStrength = QLabel("체결강도 0%")
+        self.labelExecStrength.setFont(self._font(11, bold=True))
+
+        right.addWidget(self.labelClock)
+        right.addWidget(self.labelLive)
+        right.addWidget(self.labelWs)
+        right.addWidget(self.labelExecStrength)
+
+        # ===============================
+        root.addLayout(left)
+        root.addStretch()
+        root.addLayout(mid)
+        root.addStretch()
+        root.addLayout(right)
+
+    # -------------------------------------------------
+    def _apply_style(self):
+        self.setStyleSheet("""
+        QFrame {
+            background-color: #2b2b2b;
+            border-bottom: 1px solid #1a1a1a;
+        }
+        QLabel {
+            color: #dddddd;
+        }
+        QComboBox {
+            background-color: #1f1f1f;
+            color: #ff66cc;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        """)
+
+        self.labelPrice.setStyleSheet("color:#FFD700;")
+        self.labelChange.setStyleSheet("color:#ff4d4d;")
+
+        self.labelHigh.setStyleSheet("color:#cccccc;")
+        self.labelLow.setStyleSheet("color:#cccccc;")
+        self.labelVolume.setStyleSheet("color:#cccccc;")
+        self.labelFunding.setStyleSheet("color:#ff66cc;")
+
+        self.labelLive.setStyleSheet("color:#2ecc71;")
+        self.labelWs.setStyleSheet("color:#aaaaaa;")
+
+        self.labelSpread.setStyleSheet("color:#cccccc;")
+        self.labelClock.setStyleSheet("color:#bbbbbb;")
+
+        self.labelExecStrength.setStyleSheet("color:#aaaaaa;")
+
+    # -------------------------------------------------
+    def _font(self, size, bold=False):
+        f = QFont()
+        f.setPointSize(size)
+        f.setBold(bold)
+        return f
+
+    # -------------------------------------------------
+    # 🔥 Dummy Data
+    # -------------------------------------------------
+    def set_dummy_data(self):
+        self.labelPrice.setText("2,965.94")
+        self.labelChange.setText("-1.41 (-0.05%)")
+
+        self.labelHigh.setText("고가 2,967.81")
+        self.labelLow.setText("저가 2,951.55")
+        self.labelVolume.setText("거래량 15,002")
+        self.labelFunding.setText("펀딩 +0.01%")
+
+        self.set_live(True, 12)
+
+    # -------------------------------------------------
+    def set_live(self, live: bool, latency_ms: int | None = None):
+        if live:
+            self.labelLive.setText("● LIVE")
+            self.labelLive.setStyleSheet("color:#2ecc71;")
+        else:
+            self.labelLive.setText("● OFF")
+            self.labelLive.setStyleSheet("color:#e74c3c;")
+
+        if latency_ms is not None:
+            self.labelWs.setText(f"WS {latency_ms}ms")
+
+        # TopBarWidget 내부에 추가
+
+    def _update_clock(self):
+        self.labelClock.setText(datetime.now().strftime("%H:%M:%S"))
+
+    # ===============================
+    # 외부 업데이트 API
+    # ===============================
+    def update_price(self, price: float, diff: float, pct: float):
+        self.labelPrice.setText(f"{price:,.2f}")
+
+        sign = "+" if diff >= 0 else ""
+        self.labelChange.setText(f"{sign}{diff:.2f} ({sign}{pct:.2f}%)")
+
+        if diff > 0:
+            self.labelChange.setStyleSheet("color:#ff4d4d;")
+            self.labelPrice.setStyleSheet("color:#ff4d4d;")
+        elif diff < 0:
+            self.labelChange.setStyleSheet("color:#4da6ff;")
+            self.labelPrice.setStyleSheet("color:#4da6ff;")
+        else:
+            self.labelChange.setStyleSheet("color:#aaaaaa;")
+            self.labelPrice.setStyleSheet("color:#FFD700;")
+
+    def update_stats(self, high, low, volume, funding):
+        self.labelHigh.setText(f"고가 {high:,.2f}")
+        self.labelLow.setText(f"저가 {low:,.2f}")
+        self.labelVolume.setText(f"거래량 {volume:,}")
+        self.labelFunding.setText(f"펀딩 {funding:+.2f}%")
+
+    def update_status(self, live: bool, latency_ms: int):
+        if live:
+            self.labelLive.setText("● LIVE")
+            self.labelLive.setStyleSheet("color:#2ecc71;")
+        else:
+            self.labelLive.setText("● OFF")
+            self.labelLive.setStyleSheet("color:#e74c3c;")
+
+        self.labelWs.setText(f"WS {latency_ms}ms")
+
+    def update_status_by_controller(self, status: str, latency: int):
+        if status == "LIVE":
+            self.labelLive.setText("● LIVE")
+            self.labelLive.setStyleSheet("color:#2ecc71;")
+        elif status == "DELAY":
+            self.labelLive.setText("● DELAY")
+            self.labelLive.setStyleSheet("color:#f1c40f;")
+        else:
+            self.labelLive.setText("● OFF")
+            self.labelLive.setStyleSheet("color:#e74c3c;")
+
+        self.labelWs.setText(f"WS {latency}ms")
+
+    def update_spread(self, bid: float, ask: float):
+        if bid <= 0 or ask <= 0 or ask < bid:
+            self.labelSpread.setText("스프레드 --")
+            self.labelSpread.setStyleSheet("color:#888888;")
+            return
+
+        spread = ask - bid
+        mid = (ask + bid) / 2
+        pct = (spread / mid) * 100 if mid else 0.0
+
+        self.labelSpread.setText(
+            f"스프레드 {spread:.2f} ({pct:.4f}%)"
+        )
+
+        # 🎨 컬러 로직
+        if pct < 0.02:
+            color = "#2ecc71"   # 좁음
+        elif pct < 0.05:
+            color = "#dddddd"   # 보통
+        else:
+            color = "#e74c3c"   # 넓음
+
+        self.labelSpread.setStyleSheet(f"color:{color};")
+
+    def update_exec_strength(self, value: float):
+        sign = "+" if value >= 0 else ""
+        self.labelExecStrength.setText(f"체결강도 {sign}{value:.0f}%")
+
+        if value > 20:
+            self.labelExecStrength.setStyleSheet("color:#ff4d4d;")  # 매수 우위
+        elif value < -20:
+            self.labelExecStrength.setStyleSheet("color:#4da6ff;")  # 매도 우위
+        else:
+            self.labelExecStrength.setStyleSheet("color:#aaaaaa;")  # 중립
+
+
+    # TopBarWidget 내부
+    def reset(self, symbol: str):
+        self.labelPrice.setText("--")
+        self.labelChange.setText("+0.00 (+0.00%)")
+
+        self.labelHigh.setText("고가 --")
+        self.labelLow.setText("저가 --")
+        self.labelVolume.setText("거래량 --")
+        self.labelFunding.setText("펀딩 --")
+        self.labelSpread.setText("스프레드 --")
+
+        self.update_status(live=False, latency_ms=0)
+
+
+

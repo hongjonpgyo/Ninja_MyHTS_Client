@@ -87,22 +87,22 @@ class PriceWSClient(BaseWSClient):
         super().__init__(url, callback, main_window=main_window)
 
 
-class ExecutionWSClient(BaseWSClient):
-    def __init__(self, account_id, callback, main_window=None):
-        url = f"ws://127.0.0.1:9000/ws/executions/{account_id}"
-        super().__init__(url, callback, main_window=main_window)
+# class ExecutionWSClient(BaseWSClient):
+#     def __init__(self, account_id, callback, main_window=None):
+#         url = f"ws://127.0.0.1:9000/ws/executions/{account_id}"
+#         super().__init__(url, callback, main_window=main_window)
 
 
-class AccountWSClient(BaseWSClient):
-    def __init__(self, account_id, callback, main_window=None):
-        url = f"ws://127.0.0.1:9000/ws/account/{account_id}"
-        super().__init__(url, callback, main_window=main_window)
+# class AccountWSClient(BaseWSClient):
+#     def __init__(self, account_id, callback, main_window=None):
+#         url = f"ws://127.0.0.1:9000/ws/account/{account_id}"
+#         super().__init__(url, callback, main_window=main_window)
 
 # services/ws_client.py 에 추가
-
-class TradesWSClient(BaseWSClient):
-    def __init__(self, symbol, callback, main_window=None):
-        self.symbol = symbol.lower()
-        url = f"ws://127.0.0.1:9000/ws/trades/{self.symbol}"
-        super().__init__(url, callback, main_window=main_window)  # ✅ 너 현재 BaseWSClient 시그니처 유지 기준
+#
+# class TradesWSClient(BaseWSClient):
+#     def __init__(self, symbol, callback, main_window=None):
+#         self.symbol = symbol.lower()
+#         url = f"ws://127.0.0.1:9000/ws/trades/{self.symbol}"
+#         super().__init__(url, callback, main_window=main_window)  # ✅ 너 현재 BaseWSClient 시그니처 유지 기준
 

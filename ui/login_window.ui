@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>360</width>
-    <height>240</height>
+    <width>380</width>
+    <height>300</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,20 +15,26 @@
   </property>
 
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>10</number>
+   </property>
+
+   <!-- Title -->
    <item>
     <widget class="QLabel" name="labelTitle">
-     <property name="styleSheet">
-      <string notr="true">font-size: 20px; font-weight: bold; text-align:center;</string>
-     </property>
      <property name="text">
       <string>HTS Client Login</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
      </property>
+     <property name="styleSheet">
+      <string notr="true">font-size:18px; font-weight:bold;</string>
+     </property>
     </widget>
    </item>
 
+   <!-- Email -->
    <item>
     <widget class="QLineEdit" name="editEmail">
      <property name="placeholderText">
@@ -37,26 +43,112 @@
     </widget>
    </item>
 
+   <!-- Password + eye -->
    <item>
-    <widget class="QLineEdit" name="editPassword">
-     <property name="placeholderText">
-      <string>Password</string>
+    <layout class="QHBoxLayout">
+     <item>
+      <widget class="QLineEdit" name="editPassword">
+       <property name="placeholderText">
+        <string>Password</string>
+       </property>
+       <property name="echoMode">
+        <enum>QLineEdit::Password</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnTogglePassword">
+       <property name="text">
+        <string>👁</string>
+       </property>
+       <property name="maximumWidth">
+        <number>40</number>
+       </property>
+       <property name="flat">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+
+   <!-- Error Message -->
+   <item>
+    <widget class="QLabel" name="labelError">
+     <property name="text">
+      <string></string>
      </property>
-     <property name="echoMode">
-      <enum>QLineEdit::Password</enum>
+     <property name="styleSheet">
+      <string notr="true">color:#e74c3c; font-size:12px;</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
      </property>
     </widget>
    </item>
 
+   <!-- Login Button -->
    <item>
     <widget class="QPushButton" name="btnLogin">
      <property name="text">
       <string>로그인</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">background:#3498db; color:white; font-weight:bold;</string>
+      <string notr="true">background:#3498db; color:white; font-weight:bold; height:32px;</string>
      </property>
     </widget>
+   </item>
+    <item>
+ <widget class="QLabel" name="labelStatus">
+  <property name="text">
+   <string></string>
+  </property>
+  <property name="alignment">
+   <set>Qt::AlignCenter</set>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+    color: #27ae60;
+    font-size: 12px;
+   </string>
+  </property>
+ </widget>
+</item>
+
+   <!-- Links -->
+   <item>
+    <layout class="QHBoxLayout">
+     <item>
+      <widget class="QPushButton" name="btnSignup">
+       <property name="text">
+        <string>회원가입</string>
+       </property>
+       <property name="flat">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnFindId">
+       <property name="text">
+        <string>아이디 찾기</string>
+       </property>
+       <property name="flat">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnResetPw">
+       <property name="text">
+        <string>비밀번호 재설정</string>
+       </property>
+       <property name="flat">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
 
   </layout>

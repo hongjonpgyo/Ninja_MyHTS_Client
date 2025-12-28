@@ -1,17 +1,28 @@
+from datetime import datetime
+
 def format_num(n):
     return f"{n:,.2f}"
 
+from datetime import datetime
+
 def fmt_time(ts) -> str:
     if not ts:
-        return ""  # None / "" 처리
-    # ISO 문자열일 가능성이 큼: "2025-12-14T13:22:11" / "2025-12-14 13:22:11"
+        return ""
+
     try:
+        # 🔥 Unix timestamp (float / int)
+        if isinstance(ts, (int, float)):
+            dt = datetime.fromtimestamp(ts)
+            return dt.strftime("%H:%M:%S")
+
+        # 문자열인 경우 (ISO)
         s = str(ts).replace("Z", "").replace(" ", "T")
-        from datetime import datetime
         dt = datetime.fromisoformat(s)
         return dt.strftime("%H:%M:%S")
+
     except Exception:
-        return str(ts)  # 파싱 실패 시 원본 표시
+        return ""
+
 
 def fmt(value, digits=2):
     if value is None:

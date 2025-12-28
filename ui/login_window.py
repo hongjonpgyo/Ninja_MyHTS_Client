@@ -1,9 +1,11 @@
 import asyncio
-from PyQt6.QtWidgets import QDialog, QMessageBox
+from PyQt6.QtWidgets import QDialog, QMessageBox, QLineEdit
 from PyQt6.uic import loadUi
 
 from services.api_client import APIClient
-
+from ui.find_id_dialog import FindIdDialog
+from ui.signup_dialog import SignupDialog
+from ui.password_reset_confirm_dialog import PasswordResetConfirmDialog
 
 class LoginWindow(QDialog):
     def __init__(self, api_client: APIClient, on_login_success, parent=None):
@@ -18,12 +20,38 @@ class LoginWindow(QDialog):
         self.on_login_success = on_login_success
 
         self.btnLogin.clicked.connect(self._on_login_clicked)
+        self.btnTogglePassword.clicked.connect(self.toggle_password)
+        self.editPassword.returnPressed.connect(self.btnLogin.click)
+
+        self.btnSignup.clicked.connect(self.open_signup)
+        self.btnFindId.clicked.connect(self.open_find_id)
+        self.btnResetPw.clicked.connect(self.open_reset_pw)
 
         self.editEmail.setText('demo@local')
         self.editPassword.setText('1234')
 
+    def open_signup(self):
+        print('signup')
+        dlg = SignupDialog(self)
+        if dlg.exec():
+            self.labelStatus.setText("회원가입 완료! 로그인하세요.")
+
+    def open_find_id(self):
+        dlg = FindIdDialog(self.api, self)
+        dlg.exec()
+
+    def open_reset_pw(self):
+        dlg = PasswordResetConfirmDialog(self.api, self)
+        dlg.exec()
+
     def _on_login_clicked(self):
-        asyncio.create_task(self._do_login())    # ✅ 코루틴 객체 전달
+        asyncio.ensure_future(self._do_login())
+
+    def toggle_password(self):
+        if self.editPassword.echoMode() == QLineEdit.Password:
+            self.editPassword.setEchoMode(QLineEdit.Normal)
+        else:
+            self.editPassword.setEchoMode(QLineEdit.Password)
 
     async def _do_login(self):
         email = self.editEmail.text().strip()

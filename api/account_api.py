@@ -1,8 +1,6 @@
-import requests
-from config.settings import REST_URL
-
 class AccountApi:
+    def __init__(self, api_client):
+        self.api = api_client
 
-    def get_balance(self, account_id: int):
-        r = requests.get(f"{REST_URL}/accounts/{account_id}/balance")
-        return r.json()
+    async def get_balance(self, account_id: int):
+        return await self.api.get(f"/accounts/{account_id}/balance")
