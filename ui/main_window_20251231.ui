@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1920</width>
+    <height>1021</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Ninja HTS Client</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="rootLayout">
+    <item>
+     <layout class="QHBoxLayout" name="topBarLayout">
+      <item>
+       <widget class="QLabel" name="labelPrice">
+        <property name="styleSheet">
+         <string>font-size:0px;font-weight:600;color:#FFD700;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelChange">
+        <property name="styleSheet">
+         <string>font-size:14px;color:#aaaaaa;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnSetting">
+        <property name="text">
+         <string>환경설정</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnOpenChart">
+        <property name="text">
+         <string>차트보기</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnLogout">
+        <property name="text">
+         <string>로그아웃</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QSplitter" name="splitterRoot">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <widget class="QWidget" name="leftWidget">
+       <layout class="QVBoxLayout" name="leftLayout">
+        <item>
+         <widget class="QSplitter" name="splitterLeft">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <widget class="QSplitter" name="splitterTop">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <widget class="QFrame" name="orderbookContainer">
+            <layout class="QVBoxLayout" name="orderbookLayout">
+             <item>
+              <widget class="QTableWidget" name="tableOrderbook"/>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+          <widget class="QTabWidget" name="bottomTabs">
+           <property name="styleSheet">
+            <string notr="true">QTabBar::tab {
+    width: 90px;
+    height: 32px;
+    margin: 2px;
+}
+
+QTabBar::tab:selected {
+    background: #3a7afe;
+    color: white;
+    font-weight: bold;
+}
+
+QTabBar::tab:!selected {
+    background: #2b2b2b;
+    color: #bbbbbb;
+}
+</string>
+           </property>
+           <property name="tabPosition">
+            <enum>QTabWidget::North</enum>
+           </property>
+           <property name="tabShape">
+            <enum>QTabWidget::Rounded</enum>
+           </property>
+           <property name="currentIndex">
+            <number>3</number>
+           </property>
+           <widget class="QWidget" name="tabPositions">
+            <attribute name="title">
+             <string>전체</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="positionsLayout"/>
+           </widget>
+           <widget class="QWidget" name="tabExecutions">
+            <attribute name="title">
+             <string>잔고</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="executionsLayout"/>
+           </widget>
+           <widget class="QWidget" name="tabAccount">
+            <attribute name="title">
+             <string>미체결</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="accountLayout"/>
+           </widget>
+           <widget class="QWidget" name="tabOpenOrders">
+            <attribute name="title">
+             <string>예약</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="openOrdersLayout"/>
+           </widget>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QFrame" name="orderPanelContainer">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>9999999</width>
+         <height>9999999</height>
+        </size>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
+         <widget class="QFrame" name="watchlistContainer">
+          <layout class="QVBoxLayout" name="watchlistLayout">
+           <item>
+            <widget class="QTableWidget" name="tableWatchlist"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QFrame" name="timeSalesContainer">
+          <layout class="QVBoxLayout" name="timeSalesLayout">
+           <item>
+            <widget class="QLabel" name="labelTimeSalesTitle">
+             <property name="styleSheet">
+              <string>font-size:18px;font-weight:bold;</string>
+             </property>
+             <property name="text">
+              <string>Time &amp; Sales</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QTableWidget" name="tableTimeSales"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QFrame" name="orderPanelBody">
+          <property name="maximumSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <layout class="QVBoxLayout" name="orderPanelBodyLayout"/>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

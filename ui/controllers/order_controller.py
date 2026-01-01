@@ -66,3 +66,31 @@ class OrderController:
                 QMessageBox.warning,
                 self.main, "Order Error", str(e)
             )
+
+    # 🔥 오더북에서 들어오는 지정가 주문
+    def place_limit_from_book(self, side: str, price: float, qty: float):
+        self.main.enqueue_async(
+            self._limit_from_book_worker(side, price, qty)
+        )
+
+    async def _limit_from_book_worker(self, side, price, qty):
+        try:
+            symbol = self.main.current_symbol
+
+            if qty <= 0:
+                return
+
+            await self.api.order_limit(
+                account_id=self.main.account_id,
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                price=price,
+            )
+
+            self.main.safe_ui(
+                lambda: print(f"[ORDERBOOK] {side} {price} x {qty} 주문 접수")
+            )
+
+        except Exception as e:
+            print("[Orderbook Order ERROR]", e)

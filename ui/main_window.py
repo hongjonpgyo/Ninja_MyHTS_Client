@@ -42,11 +42,13 @@ from ui.widgets.chart_popup import ChartPopup
 from ui.widgets.top_bar import TopBarWidget
 from ui.widgets.top_ticker_bar import TopTickerBar
 
+FIXED_WIDTH = 1280
 
 class MainWindow(QMainWindow):
     def __init__(self, api_client, show_login_window_callback):
         super().__init__()
-        loadUi("ui/main_window_20251214.ui", self)
+        loadUi("ui/main_window_20251231.ui", self)
+        self.setFixedWidth(FIXED_WIDTH)
 
         self.api = api_client
         self.show_login_window_callback = show_login_window_callback
@@ -82,7 +84,11 @@ class MainWindow(QMainWindow):
         self.watchlist_controller = WatchlistController(table=self.tableWatchlist)
         self.watchlist_controller.load_default()
 
-        self.orderbook = OrderbookWidgetHTS(table=self.tableOrderbook, trade_setting=self.trade_setting)
+        self.orderbook = OrderbookWidgetHTS(
+            table=self.tableOrderbook,
+            trade_setting=self.trade_setting,
+            main_window=self,
+        )
         self.tableOrderbook.cellClicked.connect(self.on_orderbook_click)
 
         self.tableWatchlist.setSizePolicy(
@@ -403,19 +409,38 @@ class MainWindow(QMainWindow):
         if not data:
             return
 
-        # 테이블 append
+        symbol = data.get("symbol")
+        side = data.get("side")
+        price = data.get("price")
+
+        # -------------------------------
+        # 🔥 1️⃣ Orderbook 내 주문 감소
+        # -------------------------------
+        if symbol and side and price:
+            self.orderbook.decrease_my_order(
+                symbol=symbol,
+                price=float(price),
+                side=side.upper()
+            )
+
+        # -------------------------------
+        # 2️⃣ 체결 테이블 append
+        # -------------------------------
         self.executions_table.append_row({
             "created_at": data.get("ts"),
-            "symbol": data.get("symbol"),
-            "side": data.get("side"),
-            "price": data.get("price"),
+            "symbol": symbol,
+            "side": side,
+            "price": price,
             "qty": data.get("qty"),
             "fee": data.get("fee", 0),
             "type": "AUTO",
         })
 
+        # -------------------------------
+        # 3️⃣ Toast
+        # -------------------------------
         self.show_toast(
-            f"{data.get('symbol')} {data.get('side')} {data.get('qty')} @ {data.get('price')} 체결"
+            f"{symbol} {side} {data.get('qty')} @ {price} 체결"
         )
 
     def show_toast(self, text: str):

@@ -2,6 +2,7 @@
 
 REST_URL = "http://127.0.0.1:9000"
 WS_URL = "ws://127.0.0.1:9000/ws"
+ORDERBOOK_DEPTH = 100
 DEFAULT_SYMBOLS = [
     "BTCUSDT",
     "ETHUSDT",
@@ -26,7 +27,12 @@ BINANCE_SYMBOLS = {
 # 선물/지수쪽은 일단 분리 (차후 source registry로 확장 가능)
 FUTURES_SYMBOLS = {"NQ", "MNQ"}
 
-MIT_SELL_COL = 0
-LMT_SELL_COL = 1
-MIT_BUY_COL = 8
-LMT_BUY_COL = 7
+MIT_SELL_COL = 0   # 좌측 MIT (청산용 / 매도)
+LMT_SELL_COL = 1   # 좌측 매도 (진입 SELL)
+COL_SELL_CNT = 2   # 좌측 내 주문 건수
+
+PRICE_COL    = 4   # 가격 (중앙)
+
+COL_BUY_CNT  = 6   # 우측 내 주문 건수
+LMT_BUY_COL  = 7   # 우측 매수 (진입 BUY)
+MIT_BUY_COL  = 8   # 우측 MIT (청산용 / 매수)
