@@ -8,17 +8,18 @@ from config.tick_size import TICK_SIZE
 
 class OrderPanel(QWidget):
 
-    def __init__(self, main_window, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
         loadUi("ui/order_panel_20251214.ui", self)
 
-        self.main_window = main_window
+        self.main_window = parent
 
         # -----------------------------
         # 기본 설정
         # -----------------------------
         self.symbol = None
-        self.tick_size = 0.01
+        # self.tick_size = 0.01
+        self.tick_size = 1
         self.price_locked = False
 
         self._all_close_timer = QTimer(self)

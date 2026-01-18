@@ -4,8 +4,10 @@ from ui.utils.formatter import fmt_time
 
 
 class OpenOrdersWidget(QtWidgets.QWidget):
-    def __init__(self, order_api, account_id):
+    def __init__(self, main_window, order_api, account_id):
         super().__init__()
+
+        self.main = main_window      # 🔥 핵심
         self.order_api = order_api
         self.account_id = account_id
 
@@ -27,8 +29,8 @@ class OpenOrdersWidget(QtWidgets.QWidget):
         }
         """)
 
-        self.lblTitle = QtWidgets.QLabel("Open Orders")
-        self.lblTitle.setStyleSheet("color:#ffffff; font-size:14px; font-weight:600;")
+        self.lblTitle = QtWidgets.QLabel("미체결 주문건수")
+        self.lblTitle.setStyleSheet("color:#ffffff; font-size:13px; font-weight:600;")
 
         self.lblTotal = QtWidgets.QLabel("0")
         self.lblTotal.setStyleSheet("color:#f1c40f; font-size:18px; font-weight:700;")
@@ -61,7 +63,7 @@ class OpenOrdersWidget(QtWidgets.QWidget):
         self.table = QtWidgets.QTableWidget()
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels(
-            ["Symbol", "Side", "Price", "Qty", "Time", "OrderID", "Status"]
+            ["종목", "구분", "주문가", "수량", "시간", "주문번호", "상태"]
         )
 
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -154,10 +156,10 @@ class OpenOrdersWidget(QtWidgets.QWidget):
         btns.addStretch()
 
         self.btnCancel = QtWidgets.QPushButton("선택 주문 취소")
-        self.btnRefresh = QtWidgets.QPushButton("새로고침")
+        # self.btnRefresh = QtWidgets.QPushButton("새로고침")
 
         self.btnCancel.setFixedWidth(160)
-        self.btnRefresh.setFixedWidth(120)
+        # self.btnRefresh.setFixedWidth(120)
 
         self.btnCancel.setStyleSheet("""
         QPushButton {
@@ -171,20 +173,20 @@ class OpenOrdersWidget(QtWidgets.QWidget):
         }
         """)
 
-        self.btnRefresh.setStyleSheet("""
-        QPushButton {
-            background-color: #444444;
-            color: white;
-            padding: 8px;
-            border-radius: 6px;
-        }
-        QPushButton:hover {
-            background-color: #555555;
-        }
-        """)
+        # self.btnRefresh.setStyleSheet("""
+        # QPushButton {
+        #     background-color: #444444;
+        #     color: white;
+        #     padding: 8px;
+        #     border-radius: 6px;
+        # }
+        # QPushButton:hover {
+        #     background-color: #555555;
+        # }
+        # """)
 
         btns.addWidget(self.btnCancel)
-        btns.addWidget(self.btnRefresh)
+        # btns.addWidget(self.btnRefresh)
         root.addLayout(btns)
 
         # =================================================
@@ -240,6 +242,7 @@ class OpenOrdersWidget(QtWidgets.QWidget):
 
     # -------------------------------------------------
     def update_table(self, orders):
+        self._update_summary(orders)
         self.table.setRowCount(len(orders))
 
         current_symbol = getattr(self, "current_symbol", None)
@@ -281,11 +284,31 @@ class OpenOrdersWidget(QtWidgets.QWidget):
             return
 
         order_ids = [int(self.table.item(r, 5).text()) for r in rows]
-        res = self.order_api.cancel_orders(order_ids)
 
-        if res.get("ok"):
-            QtWidgets.QMessageBox.information(self, "완료", "주문 취소 완료")
-        else:
-            QtWidgets.QMessageBox.warning(self, "오류", str(res))
+        # 🔥 async 작업으로 넘김
+        self.main.enqueue_async(
+            self._cancel_orders_async(order_ids)
+        )
 
-        self.refresh()
+    async def _cancel_orders_async(self, order_ids):
+        try:
+            res = await self.order_api.cancel_orders(order_ids)
+
+            if res.get("ok"):
+                self.main.safe_ui(
+                    QtWidgets.QMessageBox.information,
+                    self, "완료", "주문 취소 완료"
+                )
+            else:
+                self.main.safe_ui(
+                    QtWidgets.QMessageBox.warning,
+                    self, "오류", str(res)
+                )
+
+            # 🔄 미체결 다시 조회
+            await self.main.fetch_open_orders()
+
+        except Exception as e:
+            print("[cancel_selected_orders ERROR]", e)
+
+

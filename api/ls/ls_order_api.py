@@ -1,6 +1,6 @@
 # api/order_api.py
 
-class OrderApi:
+class LSOrderApi:
     """
     Order API (Async, Thin Wrapper)
     """
@@ -13,7 +13,8 @@ class OrderApi:
     # -------------------------------
     async def get_open_orders(self, account_id: int):
         return await self.api.get(
-            f"/orders/open/{account_id}"
+            "/ls/futures/orders/open",
+            params={"account_id": account_id},
         )
 
     # -------------------------------
@@ -28,8 +29,10 @@ class OrderApi:
     # 주문 취소 (복수)
     # -------------------------------
     async def cancel_orders(self, order_ids: list[int]):
+        print('order_ids')
+        print(order_ids)
         return await self.api.post(
-            "/orders/cancel_orders",
+            "/ls/futures/orders/cancel_orders",
             json={"order_ids": order_ids}
         )
 

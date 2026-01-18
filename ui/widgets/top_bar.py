@@ -5,16 +5,19 @@ from datetime import datetime
 # ui/widgets/top_bar.py
 from PyQt6.QtWidgets import (
     QFrame, QLabel, QComboBox,
-    QHBoxLayout, QVBoxLayout
+    QHBoxLayout, QVBoxLayout, QPushButton
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont
+
+from ui.widgets.chart_popup import ChartPopup
+from ui.widgets.preferences_dialog import PreferencesDialog
 
 
 class TopBarWidget(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
-
+        self.main_window = parent
         self._setup_ui()
         self._apply_style()
         self.set_dummy_data()   # 🔥 일단 더미부터
@@ -40,7 +43,7 @@ class TopBarWidget(QFrame):
 
         self.comboSymbol = QComboBox()
         self.comboSymbol.addItems(DEFAULT_SYMBOLS)
-        self.comboSymbol.setFixedWidth(100)
+        self.comboSymbol.setFixedWidth(130)
 
         self.labelPrice = QLabel("2,965.94")
         self.labelPrice.setFont(self._font(18, bold=True))
@@ -49,7 +52,7 @@ class TopBarWidget(QFrame):
         self.labelChange = QLabel("-1.41 (-0.05%)")
         self.labelChange.setFont(self._font(11))
 
-        left.addWidget(self.comboSymbol)
+        # left.addWidget(self.comboSymbol)
         left.addWidget(self.labelPrice)
         left.addWidget(self.labelChange)
 
@@ -79,28 +82,46 @@ class TopBarWidget(QFrame):
             mid.addWidget(w)
 
         # ===============================
-        # RIGHT : Status
+        # RIGHT : Status + Buttons
         # ===============================
         right = QHBoxLayout()
         right.setSpacing(8)
 
-        self.labelLive = QLabel("● LIVE")
-        self.labelWs = QLabel("WS 12ms")
-
-        self.labelLive.setFont(self._font(11, bold=True))
-        self.labelWs.setFont(self._font(11))
-
         self.labelClock = QLabel("--:--:--")
         self.labelClock.setFont(self._font(11))
 
-        # 🔥 체결 강도
+        self.labelLive = QLabel("● LIVE")
+        self.labelLive.setFont(self._font(11, bold=True))
+
+        self.labelWs = QLabel("WS 12ms")
+        self.labelWs.setFont(self._font(11))
+
         self.labelExecStrength = QLabel("체결강도 0%")
         self.labelExecStrength.setFont(self._font(11, bold=True))
+
+        # 🔥 버튼들
+        self.btnSetting = QPushButton("환경설정")
+        self.btnChart = QPushButton("차트보기")
+        self.btnLogout = QPushButton("로그아웃")
+
+        self.btnSetting.clicked.connect(self.open_preferences)
+        self.btnChart.clicked.connect(self.on_open_chart)
+        self.btnLogout.clicked.connect(self.logout)
+
+        for btn in (self.btnSetting, self.btnChart, self.btnLogout):
+            btn.setFixedHeight(26)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
         right.addWidget(self.labelClock)
         right.addWidget(self.labelLive)
         right.addWidget(self.labelWs)
         right.addWidget(self.labelExecStrength)
+
+        right.addSpacing(12)
+
+        right.addWidget(self.btnSetting)
+        right.addWidget(self.btnChart)
+        right.addWidget(self.btnLogout)
 
         # ===============================
         root.addLayout(left)
@@ -278,5 +299,29 @@ class TopBarWidget(QFrame):
 
         self.update_status(live=False, latency_ms=0)
 
+    def open_preferences(self):
+        dlg = PreferencesDialog(
+            setting=self.main_window.trade_setting,
+            parent=self
+        )
+        dlg.exec()
+
+    def on_open_chart(self):
+        symbol = self.main_window.current_symbol  # 예: "BTCUSDT"
+
+        self.chart_popup = ChartPopup(symbol, self)
+        self.chart_popup.show()
+
+        # 테스트용 더미 캔들
+        candles = [
+            {"time": "2024-12-01", "open": 88500, "high": 89000, "low": 88000, "close": 88800},
+            {"time": "2024-12-02", "open": 88800, "high": 89500, "low": 88400, "close": 89200},
+            {"time": "2024-12-03", "open": 89200, "high": 90000, "low": 89000, "close": 89800},
+        ]
+
+        self.chart_popup.set_candles(candles)
+
+    def logout(self):
+        self.main_window.logout()
 
 

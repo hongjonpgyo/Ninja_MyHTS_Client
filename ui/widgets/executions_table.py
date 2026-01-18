@@ -20,7 +20,7 @@ class ExecutionsTable(QtWidgets.QTableWidget):
         super().__init__(parent)
 
         self.setColumnCount(7)
-        self.setHorizontalHeaderLabels(["Time", "Symbol", "Side", "Price", "Qty", "Fee", "Type"])
+        # self.setHorizontalHeaderLabels(["Time", "Symbol", "Side", "Price", "Qty", "Fee", "Type"])
 
         # UI 기본
         self.verticalHeader().setVisible(False)

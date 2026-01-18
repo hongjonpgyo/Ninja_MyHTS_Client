@@ -4,15 +4,15 @@ import time
 class PriceController:
     def __init__(
         self,
-        label_price,
-        label_change,
+        # label_price,
+        # label_change,
         top_bar,
         order_panel=None,
         watchlist_controller=None,
     ):
         # 상단 표시용 (간단 버전 유지)
-        self.label_price = label_price
-        self.label_change = label_change
+        # self.label_price = label_price
+        # self.label_change = label_change
 
         # 확장 UI
         self.top_bar = top_bar

@@ -18,7 +18,7 @@ class TimeSalesController:
     def _setup(self):
         t = self.table
         t.setColumnCount(4)
-        t.setHorizontalHeaderLabels(["Time", "Price", "Qty", "Side"])
+        t.setHorizontalHeaderLabels(["체결시간", "체결가", "수량", "구분"])
 
         t.verticalHeader().setVisible(False)
         t.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -56,8 +56,14 @@ class TimeSalesController:
     # -------------------------------------------------
     def on_trade(self, trade: dict):
         """
-        trade = {
-            ts, price, qty, side
+        trade (SSE event) = {
+            symbol,
+            side,
+            price,
+            qty,
+            executed_at,
+            account_id,
+            order_id
         }
         """
 
@@ -65,12 +71,12 @@ class TimeSalesController:
         self.table.insertRow(0)
 
         # -------------------------
-        # Time
+        # Time (executed_at → HH:MM:SS)
         # -------------------------
-        ts = trade.get("ts")
+        ts = trade.get("executed_at")
         try:
-            if isinstance(ts, (int, float)):
-                dt = datetime.fromtimestamp(ts)
+            if isinstance(ts, str):
+                dt = datetime.fromisoformat(ts)
                 time_str = dt.strftime("%H:%M:%S")
             else:
                 time_str = "--:--:--"
@@ -110,7 +116,6 @@ class TimeSalesController:
         item_side.setForeground(fg)
         item_side.setFont(self.bold_font)
 
-        # Qty는 중립
         item_qty.setForeground(QColor("#dddddd"))
 
         # 행 배경 강조

@@ -1,12 +1,15 @@
-from PyQt6.QtWidgets import QTableWidgetItem, QAbstractItemView, QHeaderView
+from PyQt6.QtWidgets import QTableWidgetItem, QAbstractItemView, QHeaderView, QMenu
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor, QFont
 
 class WatchlistController:
-    def __init__(self, table):
+    def __init__(self, table, on_add_fav, on_remove_fav, favorites: set[str]):
         self.table = table
+        self.on_add_fav = on_add_fav
+        self.on_remove_fav = on_remove_fav
         self.row_map = {}          # symbol_code -> row index
         self.prev_price = {}       # symbol_code -> last price
+        self.favorites = favorites
 
         self.bold_font = QFont()
         self.bold_font.setBold(True)
@@ -52,6 +55,9 @@ class WatchlistController:
             color: white;
         }
         """)
+
+        t.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        t.customContextMenuRequested.connect(self._on_context_menu)
 
     # -------------------------------------------------
     def load_default(self):
@@ -158,3 +164,78 @@ class WatchlistController:
         elif diff < 0:
             return "▼", "#e74c3c"
         return "", "#aaaaaa"
+
+    def _on_context_menu(self, pos):
+        item = self.table.itemAt(pos)
+        if not item:
+            return
+
+        row = item.row()
+        code_item = self.table.item(row, 1)  # 코드 컬럼
+        name_item = self.table.item(row, 0)
+
+        if not code_item or not name_item:
+            return
+
+        code = code_item.text()
+        name = name_item.text().replace("★ ", "")
+
+        menu = QMenu(self.table)
+
+        if code not in self.favorites:
+            act_add = menu.addAction("⭐ 즐겨찾기 추가")
+            act_add.triggered.connect(
+                lambda: self._add_favorite(row, code, name)
+            )
+        else:
+            act_remove = menu.addAction("❌ 즐겨찾기 제거")
+            act_remove.triggered.connect(
+                lambda: self._remove_favorite(row, code)
+            )
+
+        menu.exec(self.table.viewport().mapToGlobal(pos))
+
+    def _add_favorite(self, row, code, name):
+        self.on_add_fav(code)  # 🔥 MainWindow로 위임
+
+        item = self.table.item(row, 0)
+        item.setText(f"★ {name}")
+        item.setForeground(QColor("#FFD700"))
+
+    def _remove_favorite(self, row, code):
+        self.on_remove_fav(code)
+
+        item = self.table.item(row, 0)
+        item.setText(item.text().replace("★ ", ""))
+        item.setForeground(QColor("#e0e0e0"))
+
+    def mark_favorite(self, code: str):
+        if code not in self.row_map:
+            return
+
+        row = self.row_map[code]
+        item = self.table.item(row, 0)
+
+        if not item:
+            return
+
+        name = item.text().replace("★ ", "")
+        item.setText(f"★ {name}")
+        item.setForeground(QColor("#FFD700"))
+
+    def unmark_favorite(self, code: str):
+        if code not in self.row_map:
+            return
+
+        row = self.row_map[code]
+        item = self.table.item(row, 0)
+
+        if not item:
+            return
+
+        item.setText(item.text().replace("★ ", ""))
+        item.setForeground(QColor("#e0e0e0"))
+
+
+
+

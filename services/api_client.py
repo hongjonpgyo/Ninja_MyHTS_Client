@@ -2,12 +2,12 @@
 import httpx
 import requests
 
-from config.settings import REST_URL
+from config.settings import LS_BASE_URL
 
 
 class APIClient:
     def __init__(self):
-        self.base_url = REST_URL
+        self.base_url = LS_BASE_URL
         self.token = None
         self._client = httpx.AsyncClient(base_url=self.base_url, timeout=5.0)
 
@@ -47,7 +47,7 @@ class APIClient:
     # ======================================================
     async def login(self, email, password):
         payload = {"email": email, "password": password}
-        res = await self._client.post("/auth/login", json=payload)
+        res = await self._client.post("/ls/futures/login", json=payload)
         data = res.json()
 
         self.token = data.get("access_token")

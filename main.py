@@ -4,19 +4,21 @@ import asyncio
 from PyQt6.QtWidgets import QApplication
 from qasync import QEventLoop
 
-from services.api_client import APIClient
+from api.ls.ls_api_client import LSAPIClient
 from ui.login_window import LoginWindow
 from ui.main_window import MainWindow
-
+from PyQt6.QtGui import QFont
 
 def main():
     app = QApplication(sys.argv)
+    app.setFont(QFont("Pretendard", 12))
+    app.setStyleSheet('* { font-family:"Pretendard"; }')
 
     # 🔥 Qt + asyncio 통합 루프
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
-    api_client = APIClient()
+    api_client = LSAPIClient()
     main_window = None
     login_window = None
 

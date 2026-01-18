@@ -1,668 +1,697 @@
 # ui/main_window.py
 import asyncio
-import random
 
-from PyQt6.QtWidgets import QMainWindow, QSizePolicy
+from PyQt6.QtWidgets import QMainWindow, QSizePolicy, QWidget, QHBoxLayout, QPushButton
 from PyQt6.uic import loadUi
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import QTimer, Qt
 
-from config.settings import YAHOO_SYMBOL_MAP, BINANCE_SYMBOLS
-from services.price_feed_manager import PriceFeedManager
-from services.execution_ws_client import ExecutionWSClient
-from services.account_ws_client import AccountWSClient
-from services.trade_ws_client import TradesWSClient
-from services.ws_client import (
-    PriceWSClient,
-    # TradesWSClient,
-)
-
-from api.account_api import AccountApi
+# -------------------------
+# API
+# -------------------------
+from api.ls.ls_api_client import LSAPIClient
+from api.ls.ls_account_api import LSAccountApi
+from api.ls.ls_order_api import LSOrderApi
 from api.position_api import PositionApi
 from api.order_api import OrderApi
-from services.yahoo_price_feeder import YahooPriceFeeder
+from api.favorite_api import FavoriteApiClient
 
-from ui.controllers.order_controller import OrderController
-from ui.controllers.symbol_controller import SymbolController
+# -------------------------
+# Services / Store
+# -------------------------
+from services.execution_ws_client import ExecutionWSClient
+from services.ls.ls_account_ws_client import LSAccountWSClient
+from services.trade_ws_client import TradesWSClient
+from services.ls.my_order_store import MyOrderStore
+
+# -------------------------
+# Controllers
+# -------------------------
 from ui.controllers.price_controller import PriceController
-from ui.controllers.watchlist_controller import WatchlistController
 from ui.controllers.background_controller import BackgroundController
 from ui.controllers.time_sales_controller import TimeSalesController
 from ui.controllers.execution_strength import ExecutionStrength
+from ui.ls_controllers.ls_reservation_controller import ReservationController
+from ui.ls_controllers.ls_watchlist_controller import LSWatchListController
+from ui.ls_controllers.ls_order_controller import OrderController
 from ui.settings.trade_setting import UserTradeSetting
 
-from ui.widgets.order_panel import OrderPanel
-from ui.widgets.position_table import PositionsTable
-from ui.widgets.balance_widget import BalanceWidget
-from ui.widgets.open_orders_widget import OpenOrdersWidget
+# -------------------------
+# Widgets
+# -------------------------
+from ui.widgets.favorite_bar import FavoriteBar
+from ui.widgets.ls_reservation.reservation_widget import ReservationWidget
+from ui.widgets.order_control_bar import OrderControlBar
+from ui.widgets.ls_orderbook.ls_orderbook_widget import LSOrderBookWidget
+from ui.widgets.ls_position.ls_position_table import LSPositionsTable
+from ui.widgets.ls_balance.ls_balance_table import LSBalanceTable
 from ui.widgets.executions_table import ExecutionsTable
-from ui.widgets.preferences_dialog import PreferencesDialog
+from ui.widgets.open_orders_widget import OpenOrdersWidget
+from ui.widgets.symbol_summary_widget import SymbolSummaryWidget
 from ui.widgets.toast import ToastMessage
-from ui.widgets.orderbook_widget_hts import OrderbookWidgetHTS
-from ui.widgets.chart_popup import ChartPopup
 from ui.widgets.top_bar import TopBarWidget
-from ui.widgets.top_ticker_bar import TopTickerBar
 
-FIXED_WIDTH = 1280
+from ui.utils.formatter import fmt_money, fmt_pnl, fmt_rate
+from ui.workers.execution_stream_worker import ExecutionStreamWorker
+
+from config.settings import LS_BASE_URL
+
+FIXED_WIDTH = 1400
+PRICE_COL = 4
+
 
 class MainWindow(QMainWindow):
+    # =====================================================
+    # INIT
+    # =====================================================
     def __init__(self, api_client, show_login_window_callback):
         super().__init__()
-        loadUi("ui/main_window_20251231.ui", self)
+
+        # -------------------------
+        # UI Load
+        # -------------------------
+        loadUi("ui/main_window_20260111.ui", self)
         self.setFixedWidth(FIXED_WIDTH)
 
+        # -------------------------
+        # Core State
+        # -------------------------
         self.api = api_client
+        self.ls_api = LSAPIClient()
         self.show_login_window_callback = show_login_window_callback
 
+        self.user = None
+        self.account_id = None
+        self.current_symbol = "HSIF26"
+        self.running = True
+        self._fetching_open_orders = False
+
+        self.my_order_store = MyOrderStore()
+        self.exec_strength = ExecutionStrength(window_sec=5)
+
         # -------------------------
-        # ✅ 단일 큐/단일 워커 (핵심)
+        # Async Queue (🔥 핵심)
         # -------------------------
         self._queue = asyncio.Queue()
-        self._worker_task = asyncio.create_task(self._queue_worker())
+        self._worker_task = None
 
         self.trade_setting = UserTradeSetting()
 
         # -------------------------
-        # API / 상태
+        # API Wrappers
         # -------------------------
-        # 얇은 API 래퍼들
-        self.account_api = AccountApi(self.api)
+        self.ls_account_api = LSAccountApi(self.ls_api)
         self.position_api = PositionApi(self.api)
-        self.order_api = OrderApi(self.api)
-
-        self.user = None
-        self.account_id = None
-        self.current_symbol = "BTCUSDT"
-        self.running = True
-        self._fetching_open_orders = False
+        self.order_api = LSOrderApi(self.ls_api)
 
         # -------------------------
-        # UI 구성
+        # UI Components
         # -------------------------
-        self.order_panel = OrderPanel(main_window=self, parent=self)
-        self.orderPanelBodyLayout.addWidget(self.order_panel)
+        self._init_top_bar()
+        self._init_orderbook()
+        self._init_watchlist()
+        self._init_bottom_tabs()
+        self._init_right_panel()
 
-        self.watchlist_controller = WatchlistController(table=self.tableWatchlist)
-        self.watchlist_controller.load_default()
-
-        self.orderbook = OrderbookWidgetHTS(
-            table=self.tableOrderbook,
-            trade_setting=self.trade_setting,
-            main_window=self,
-        )
-        self.tableOrderbook.cellClicked.connect(self.on_orderbook_click)
-
-        self.tableWatchlist.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Expanding
-        )
-
+        # -------------------------
+        # Controllers
+        # -------------------------
+        self.price_controller = PriceController(top_bar=self.topBar)
+        self.order_controller = OrderController(main_window=self, api=self.ls_api)
         self.bg_controller = BackgroundController(self, interval=0.5)
 
-        # self.symbol_controller = SymbolController(
-        #     combo=self.symbolCombo,
-        #     on_change=self.change_symbol
-        # )
-        # self.symbol_controller.load_default()
+        self.orderbook.set_order_controller(self.order_controller)
 
-        self.order_controller = OrderController(
-            main_window=self,
-            order_panel=self.order_panel,
-            api=self.api
+        # -------------------------
+        # WS Clients
+        # -------------------------
+        self.exec_ws = None
+        self.account_ws = None
+        # self.trade_ws = None
+
+        # -------------------------
+        # Clock
+        # -------------------------
+        self._last_ls_time = None
+        self.clock_timer = QTimer(self)
+        self.clock_timer.timeout.connect(self._on_clock_tick)
+        self.clock_timer.start(1000)
+
+        self.labelClock.setStyleSheet(
+            "color:#00ff99;font-weight:bold;font-size:13px;"
         )
 
-        self.time_sales_controller = TimeSalesController(self.tableTimeSales)
-        self.trade_ws = None
+        # -------------------------
+        # Layout tuning
+        # -------------------------
+        self._tune_splitters()
 
-        # self.positions_table = PositionsTable(self.tablePositions)
-        self.positions_table = PositionsTable()
+        # -------------------------
+        # Initial Load
+        # -------------------------
+        self.enqueue_async(self.load_ls_watchlist())
+
+        self.execution_worker = ExecutionStreamWorker(
+            base_url=LS_BASE_URL
+        )
+
+        self.execution_worker.execution_received.connect(
+            self.on_execution_received
+        )
+
+        self.execution_worker.start()  # ← 이게 없으면 100% 안 뜸
+
+        self.orderbookControlLayout.setContentsMargins(8, 6, 8, 6)
+        self.orderbookControlBar.setStyleSheet("""
+        QFrame#orderbookControlBar {
+            background-color: #1f1f1f;
+            border-bottom: 1px solid #2b2b2b;
+        }
+
+        QFrame#orderbookControlBar QLabel {
+            color: #cccccc;
+            font-size: 11px;
+        }
+
+        QFrame#orderbookControlBar QLabel#lblPnL {
+            font-weight: bold;
+        }
+        """)
+
+        self.bottomTabs.currentChanged.connect(self.on_tab_changed)
+
+    def on_tab_changed(self, idx):
+        print('tabName : ' + self.bottomTabs.widget(idx).objectName())
+
+        if self.bottomTabs.widget(idx).objectName() == "tabOpenOrders":
+            asyncio.create_task(self.reload_reservations())
+
+    # =====================================================
+    # UI INIT
+    # =====================================================
+    def _init_top_bar(self):
+        self.topBar = TopBarWidget(self)
+        self.centralWidget().layout().insertWidget(0, self.topBar)
+
+        self.topBar.comboSymbol.currentTextChanged.connect(
+            lambda s: self.enqueue_async(self.change_symbol(s))
+        )
+
+    def _init_orderbook(self):
+        self.orderbook = LSOrderBookWidget(
+            table=self.tableOrderbook,
+            tick_size=1.0,
+        )
+        self.orderbook.set_symbol(self.current_symbol, 1.0)
+
+        # self.tableOrderbook.cellClicked.connect(self.on_orderbook_click)
+
+        self.favoriteBar = FavoriteBar()
+        self.favoriteBar.symbolClicked.connect(self.on_favorite_clicked)
+        # self.splitterLeft.insertWidget(0, self.favoriteBar)
+        self.topBarLayout.addWidget(self.favoriteBar)
+
+        # self.orderControlBar = OrderControlBar(self)
+        # self.splitterLeft.insertWidget(2, self.orderControlBar)
+
+    def _init_watchlist(self):
+        self.ls_watchlist_controller = LSWatchListController(
+            table=self.tableWatchlist,
+            on_symbol_click=self.on_watchlist_symbol_clicked,
+        )
+        self.tableWatchlist.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding,
+        )
+
+    def _init_bottom_tabs(self):
+        self.positions_table = LSPositionsTable()
         self.positionsLayout.addWidget(self.positions_table)
-        self.positionsLayout.setStretch(0, 1)
 
-        self.balance_widget = BalanceWidget()
+        self.balance_widget = LSBalanceTable()
         self.accountLayout.addWidget(self.balance_widget)
 
         self.executions_table = ExecutionsTable()
-        self.executionsLayout.addWidget(self.executions_table)
+        self.executionsLayout.addWidget(self.balance_widget)
 
-        self.chart_popup = None
-        self.btnSetting.clicked.connect(self.open_preferences)
-        self.btnOpenChart.clicked.connect(self.on_open_chart)
-        self.btnLogout.clicked.connect(self.logout)
+        # self.reservation_widget = ReservationWidget()
+        # self.reservationLayout.addWidget(self.reservation_widget)
+        self.setup_reservation_tab()
 
-        self.top_Bar = TopBarWidget(self)
-        layout = self.centralWidget().layout()
-        layout.insertWidget(0, self.top_Bar)
+    def _init_right_panel(self):
+        self.time_sales_controller = TimeSalesController(self.tableTimeSales)
+        self.symbolSummary = SymbolSummaryWidget(self)
 
-        self.price_controller = PriceController(
-            label_price=self.labelPrice,
-            label_change=self.labelChange,
-            top_bar=self.top_Bar,
-            order_panel=self.order_panel,
-            watchlist_controller=self.watchlist_controller,
+        self.rightPanelLayout.insertWidget(
+            self.rightPanelLayout.indexOf(self.tableWatchlist),
+            self.symbolSummary,
         )
 
-        self.top_Bar.comboSymbol.currentTextChanged.connect(
-            lambda symbol: self.enqueue_async(self.change_symbol(symbol))
-        )
+    def _tune_splitters(self):
+        # self.splitterRoot.setStretchFactor(0, 6)
+        # self.splitterRoot.setStretchFactor(1, 5)
+        #
+        # self.splitterLeft.setStretchFactor(0, 8)
+        # self.splitterLeft.setStretchFactor(1, 2)
+        #
+        # self.splitterTop.setStretchFactor(0, 5)
+        # self.splitterTop.setStretchFactor(1, 4)
+        self.splitterRoot.setStretchFactor(0, 6)
+        self.splitterRoot.setStretchFactor(1, 5)
 
-        # 2) Feed Manager
-        self.feed_manager = PriceFeedManager()
+        # 🔥 여기만 바꾸면 됨
+        self.splitterLeft.setStretchFactor(0, 3)  # 상단(요약)
+        self.splitterLeft.setStretchFactor(1, 5)  # 오더북
+        self.splitterLeft.setStretchFactor(2, 2)  # 하단탭 ↓
 
-        # ✅ Feed -> PriceController (단일 진입점)
-        self.feed_manager.price_updated.connect(self.price_controller.on_price)
-
-        # 3) Yahoo Feeder + Timer (여기서 생명주기 관리)
-        self.yahoo_feeder = YahooPriceFeeder(self.feed_manager, YAHOO_SYMBOL_MAP)
-
-        self.yahoo_timer = QTimer(self)
-        self.yahoo_timer.timeout.connect(self.yahoo_feeder.poll)
-        self.yahoo_timer.start(5000)
-
-        self.status_timer = QTimer(self)
-        self.status_timer.timeout.connect(self._update_feed_status)
-        self.status_timer.start(500)
-
-        # WS 핸들
-        self.ws = None
-        self.exec_ws = None
-        self.account_ws = None
-
-        self.splitterRoot.setStretchFactor(0, 6)  # 좌측
-        self.splitterRoot.setStretchFactor(1, 4)  # OrderPanel
-
-        self.splitterLeft.setStretchFactor(0, 6)  # 상단
-        self.splitterLeft.setStretchFactor(1, 2)  # 하단 탭
-
-        self.splitterTop.setStretchFactor(0, 5)  # Orderbook
-        self.splitterTop.setStretchFactor(1, 4)  # Time&Sales
-
-        self.exec_strength = ExecutionStrength(window_sec=5)
-
-    # -------------------------
-    # ✅ 안전 UI
-    # -------------------------
+    # =====================================================
+    # SAFE UI / ASYNC QUEUE
+    # =====================================================
     def safe_ui(self, func, *args):
         QTimer.singleShot(0, lambda: func(*args))
 
-    # -------------------------
-    # ✅ 큐에 태우기 (모든 async는 여기로만!)
-    # -------------------------
     def enqueue_async(self, coro):
-        if coro is None:
-            return
-        if not asyncio.iscoroutine(coro):
-            raise TypeError(f"enqueue_async expects coroutine, got {type(coro)}")
-        self._queue.put_nowait(coro)
+        if coro and asyncio.iscoroutine(coro):
+            self._queue.put_nowait(coro)
 
     async def _queue_worker(self):
         while True:
             coro = await self._queue.get()
-
-            if coro is None:  # ⛔ 종료 신호
+            if coro is None:
                 break
-
             try:
                 await coro
-            except asyncio.CancelledError:
-                break
             except Exception as e:
                 print("[QUEUE ERROR]", e)
             finally:
                 self._queue.task_done()
 
-    # -------------------------
-    # Login complete
-    # -------------------------
+    # =====================================================
+    # LOGIN / INIT
+    # =====================================================
     def init_user(self, token, user, account_id):
         self.api.set_token(token)
         self.user = user
         self.account_id = account_id
 
         self.open_orders_widget = OpenOrdersWidget(
-            self.order_api,
-            account_id
+            main_window=self,
+            order_api=self.order_api,
+            account_id=account_id,
         )
-        self.openOrdersLayout.addWidget(self.open_orders_widget)
 
-        # ✅ WS / BG는 모두 enqueue_async + 함수 참조
-        self.enqueue_async(self._start_price_ws())
-        # self.enqueue_async(self._start_trade_ws())
+        self.accountLayout.addWidget(self.open_orders_widget)
 
-        self.bg_controller.start()
+        if self._worker_task is None:
+            self._worker_task = asyncio.create_task(self._queue_worker())
 
         self.exec_ws = ExecutionWSClient(
-            token=token,  # ✅ 추가
+            token=token,
             account_id=account_id,
             callback=self.safe_ui_handle_execution,
             main_window=self,
         )
 
-        self.account_ws = AccountWSClient(
-            token=token,  # ✅ 추가
-            account_id=account_id,
-            callback=self.safe_ui_update_account_ws,
-            main_window=self,
-        )
+        # self.account_ws = LSAccountWSClient(
+        #     token=token,
+        #     account_id=account_id,
+        #     callback=self.safe_ui_update_account_ws,
+        #     main_window=self,
+        # )
 
-        self.enqueue_async(self.exec_ws.start())
-        self.enqueue_async(self.account_ws.start())
-        self.enqueue_async(self._start_trade_ws_initial())  # ✅ 추가
+        self.favorite_api = FavoriteApiClient(token=token)
+        self.load_favorites()
+
+        self.bg_controller.start()
+        # self.enqueue_async(self.exec_ws.start())
+        # self.enqueue_async(self.account_ws.start())
+        self.reservation_controller = ReservationController(
+            self.reservationWidget,
+            self.api,
+            self.account_id,
+        )
+        self.enqueue_async(self.reservation_controller.refresh())
 
         self.show()
 
-    # -------------------------
-    # Price WS
-    # -------------------------
-    async def _start_price_ws(self):
-        print("[WS] start_price_ws")
+    # =====================================================
+    # WATCHLIST / SYMBOL
+    # =====================================================
+    def on_watchlist_symbol_clicked(self, symbol: str, row: dict):
+        tick_size = row.get("tick_size") or row.get("price_unit") or 1.0
+        self.selected_ls_row = row
+        self.enqueue_async(self.change_symbol(symbol, tick_size))
 
-        if self.ws:
-            await self.ws.stop()
-
-        # ✅ callback은 UI스레드에서만 실행됨(ws_client가 보장)
-        self.ws = PriceWSClient(
-            symbol=self.current_symbol,
-            callback=self._on_price_ws,
-            main_window=self
-        )
-        await self.ws.start()
-
-    def start_price_ws(self):
-        if self.current_symbol not in BINANCE_SYMBOLS:
-            print(f"[WS] start_price_ws skipped: {self.current_symbol}")
-            return
-
-        self.enqueue_async(self._start_price_ws())
-    # async def _start_trade_ws(self):
-    #     print("[WS] start_trade_ws")
-    #
-    #     # 기존 WS 정리
-    #     if hasattr(self, "trade_ws") and self.trade_ws:
-    #         await self.trade_ws.stop()
-    #
-    #     # Time & Sales 초기화
-    #     self.time_sales_controller.clear()
-    #
-    #     # 새 WS 생성
-    #     self.trade_ws = TradesWSClient(
-    #         symbol=self.current_symbol,
-    #         callback=self._on_trade_ws,
-    #         main_window=self
-    #     )
-    #     await self.trade_ws.start()
-    #
-    # def start_trade_ws(self):
-    #     self.enqueue_async(self._start_trade_ws())
-
-    def _on_price_ws(self, data: dict):
-        # 서버 payload에 symbol이 없을 수 있으니 강제 주입
-        data = dict(data) if isinstance(data, dict) else {}
-        data["symbol"] = self.current_symbol
-        self.price_controller.on_price(data)
-
-    def _on_trade_ws(self, data: dict):
-        print("[ON_TRADE_WS RAW]", data)
-
-        # type 체크 제거
-        if not isinstance(data, dict):
-            return
-
-        # 🔥 체결 강도 누적
-        self.exec_strength.add_trade(data)
-
-        strength = self.exec_strength.calc()
-
-        # UI 업데이트
-        self.safe_ui(
-            self.top_Bar.update_exec_strength,
-            strength
-        )
-
-        self.safe_ui(
-            self.time_sales_controller.on_trade,
-            data
-        )
-
-    # -------------------------
-    # Orderbook click
-    # -------------------------
-    def on_orderbook_click(self, row, col):
-        try:
-            PRICE_COL = 4
-            item = self.tableOrderbook.item(row, PRICE_COL)
-            if not item:
-                return
-
-            text = item.text().strip()
-            if not text:
-                return  # 🔥 빈 값이면 그냥 무시
-
-            price = float(item.text().replace(",", ""))
-            price = self.order_panel._round_to_tick(price)
-            self.order_panel.editOrderPrice.setText(f"{price:.2f}")
-
-            # 🔒 현재가 자동 덮어쓰기 방지용 플래그
-            self.order_panel.price_locked = True
-
-            # Market이면 Limit으로 강제 전환
-            if self.order_panel.get_order_type() == "Market":
-                self.order_panel.comboType.setCurrentText("Limit")
-
-        except Exception as e:
-            print("[Orderbook Click ERROR]", e)
-
-    def on_dummy_tick(self, data):
-        price = data["price"]
-        diff = data["change"]
-
-        self.topTicker.lblPrice.setText(f"{price:,.2f}")
-        self.topTicker.lblChange.setText(
-            f"{diff:+.2f} ({diff / price * 100:+.2f}%)"
-        )
-
-        self.topTicker.lblMetrics.setText(
-            f"고가 {data['high']:,.2f}   "
-            f"저가 {data['low']:,.2f}   "
-            f"거래량 {data['volume']:,}   "
-            f"펀딩 {data['funding']:+.2f}%"
-        )
-
-        if diff > 0:
-            self.topTicker.lblChange.setStyleSheet("color:#2ecc71;")
-        elif diff < 0:
-            self.topTicker.lblChange.setStyleSheet("color:#e74c3c;")
-        else:
-            self.topTicker.lblChange.setStyleSheet("color:#aaaaaa;")
-
-    # -------------------------
-    # Account WS
-    # -------------------------
-    def safe_ui_update_account_ws(self, data):
-        if data.get("type") != "account_update":
-            return
-
-        self.positions_table.render(data.get("positions", []))
-        self.balance_widget.update_balance(data.get("account", {}))
-        self._update_order_panel_position(data.get("positions", []))
-
-    def _update_order_panel_position(self, positions):
-        symbol = self.current_symbol
-        row = next((p for p in positions if p.get("symbol") == symbol), None)
-
-        if row is None or abs(row.get("qty", 0)) == 0:
-            self.order_panel.reset_position()
-            self.order_panel._reset_all_close_button()  # ✅ 여기!
-            return
-
-        self.order_panel.update_position(row)
-
-    # -------------------------
-    # Execution WS
-    # -------------------------
-    def safe_ui_handle_execution(self, msg: dict):
-        # msg = {"type":"execution", "data":{...}}
-        if msg.get("type") == "execution":
-            data = msg.get("data", {}) or {}
-        else:
-            data = msg or {}
-
-        if not data:
-            return
-
-        symbol = data.get("symbol")
-        side = data.get("side")
-        price = data.get("price")
-
-        # -------------------------------
-        # 🔥 1️⃣ Orderbook 내 주문 감소
-        # -------------------------------
-        if symbol and side and price:
-            self.orderbook.decrease_my_order(
-                symbol=symbol,
-                price=float(price),
-                side=side.upper()
-            )
-
-        # -------------------------------
-        # 2️⃣ 체결 테이블 append
-        # -------------------------------
-        self.executions_table.append_row({
-            "created_at": data.get("ts"),
-            "symbol": symbol,
-            "side": side,
-            "price": price,
-            "qty": data.get("qty"),
-            "fee": data.get("fee", 0),
-            "type": "AUTO",
-        })
-
-        # -------------------------------
-        # 3️⃣ Toast
-        # -------------------------------
-        self.show_toast(
-            f"{symbol} {side} {data.get('qty')} @ {price} 체결"
-        )
-
-    def show_toast(self, text: str):
-        ToastMessage(self, text).show_toast()
-
-    # -------------------------
-    # Symbol change
-    # -------------------------
-    async def change_symbol(self, symbol):
+    async def change_symbol(self, symbol: str, tick_size: float | None = None):
         symbol = symbol.upper()
-
         if symbol == self.current_symbol:
             return
 
-        print(f"[SYMBOL] {self.current_symbol} → {symbol}")
         self.current_symbol = symbol
-
-        # ------------------------
-        # 1️⃣ UI / Price 리셋
-        # ------------------------
+        self.orderbook.set_symbol(symbol, tick_size=tick_size)
         self.price_controller.set_symbol(symbol)
-
-        self.order_panel.reset_position()
-        self.order_panel.set_symbol(symbol)
-        self.order_panel.price_locked = False
-
         self.price_controller.reset()
 
-        # ------------------------
-        # 2️⃣ 🔥 Price WS 분기
-        # ------------------------
-        if symbol in BINANCE_SYMBOLS:
-            await self._start_price_ws()
-        else:
-            if self.ws:
-                await self.ws.stop()
-                self.ws = None
-
-            print(f"[PRICE WS] skipped (non-binance): {symbol}")
-            # Yahoo / Synthetic feeder가 price_controller 갱신
-
-        # ------------------------
-        # 3️⃣ Trade WS (항상)
-        # ------------------------
-        if self.trade_ws:
-            await self.trade_ws.stop()
+        # if self.trade_ws:
+        #     await self.trade_ws.stop()
 
         self.time_sales_controller.clear()
+        # self.trade_ws = TradesWSClient(symbol=symbol, callback=self._on_trade_ws)
+        # await self.trade_ws.start()
 
-        self.trade_ws = TradesWSClient(
-            symbol=symbol,
-            callback=self._on_trade_ws
-        )
-        await self.trade_ws.start()
+        if hasattr(self, "selected_ls_row"):
+            self.symbolSummary.update_ls_symbol(self.selected_ls_row)
 
-        # ------------------------
-        # 4️⃣ 🔥🔥 핵심: 포지션 재조회
-        # ------------------------
-        try:
-            pos = await self.position_api.get_position(
-                self.account_id,
-                symbol
-            )
-
-            if pos:
-                self.order_panel.update_position(pos)
-            else:
-                self.order_panel.reset_position()
-        except Exception as e:
-            print("[change_symbol] position fetch error:", e)
-
-    async def _start_trade_ws_initial(self):
-        # 이미 열려 있으면 무시
-        if self.trade_ws:
+    # =====================================================
+    # FAVORITE
+    # =====================================================
+    def on_favorite_clicked(self, symbol: str):
+        """
+        FavoriteBar에서 심볼 클릭 시
+        """
+        if not symbol:
             return
 
-        print("[WS] start_trade_ws (initial)")
+        # Watchlist 클릭과 동일한 흐름으로 처리
+        self.enqueue_async(self.change_symbol(symbol))
 
-        self.time_sales_controller.clear()
-
-        self.trade_ws = TradesWSClient(
-            symbol=self.current_symbol,
-            callback=self._on_trade_ws,
-        )
-        await self.trade_ws.start()
-
-    # -------------------------
-    # Fetchers (BackgroundController가 큐로 호출)
-    # -------------------------
     async def fetch_open_orders(self):
         try:
             if self._fetching_open_orders:
                 return
             self._fetching_open_orders = True
-            try:
-                orders = await self.order_api.get_open_orders(self.account_id)
-                self.safe_ui(self.open_orders_widget.update_table, orders)
-            finally:
-                self._fetching_open_orders = False
+
+            orders = await self.order_api.get_open_orders(self.account_id)
+
+            # 1️⃣ OpenOrders 테이블 갱신
+            self.safe_ui(
+                self.open_orders_widget.update_table,
+                orders
+            )
+
+            # 2️⃣ OrderBook용 my_orders 생성 (DB 기준)
+            my_orders = {"SELL": {}, "BUY": {}}
+            for o in orders:
+                price = round(float(o["price"]), 6)
+                side = o["side"]
+
+                my_orders[side][price] = my_orders[side].get(price, 0) + 1
+
+            # 3️⃣ OrderBook 갱신 (항상 DB 기준)
+            self.safe_ui(
+                self.orderbook.update_my_orders,
+                my_orders
+            )
 
         except Exception as e:
             print("[fetch_open_orders ERROR]", e)
 
-    async def fetch_executions(self):
+        finally:
+            self._fetching_open_orders = False
+
+    async def fetch_ls_quote(self):
         try:
-            rows = await self.api.get_executions(self.account_id)
-            self.safe_ui(self.executions_table.update_table, rows)
+            data = await self.ls_api.get(
+                f"/ls/futures/quote/{self.current_symbol}"
+            )
+
+            price = data.get("price")
+            if price is None:
+                return
+
+            # 1️⃣ 상단 가격 갱신
+            self.safe_ui(
+                self.price_controller.on_price,
+                {
+                    "symbol": self.current_symbol,
+                    "price": price,
+                    "source": "LS",
+                }
+            )
+
+            # 2️⃣ OrderBook 기준가 이동
+            self.safe_ui(
+                self.orderbook.update_ls_price,
+                float(price)
+            )
+
+        except Exception as e:
+            print("[fetch_ls_quote ERROR]", e)
+
+    async def fetch_executions(self):
+        """
+        체결 내역 조회 (BackgroundController 전용)
+        """
+        try:
+            rows = await self.order_api.get_executions(self.account_id)
+            self.safe_ui(
+                self.executions_table.update_table,
+                rows
+            )
         except Exception as e:
             print("[fetch_executions ERROR]", e)
 
-    async def fetch_orderbook(self):
+    async def fetch_account_state(self):
         try:
-            data = await self.api.get(
-                f"/orderbook/{self.current_symbol}/{self.account_id}"
+            balance = await self.ls_account_api.get_balance(self.account_id)
+
+            positions = await self.ls_account_api.get_positions(self.account_id)
+            # self.safe_ui(
+            #     self.balance_widget.update_balance,
+            #     balance
+            # )
+            self.safe_ui(
+                self.update_account_summary,
+                balance
             )
 
-            bids = data.get("bids", [])
-            asks = data.get("asks", [])
-            mid = data.get("mid")
-
-            if not bids and not asks:
-                return
-
-            if mid is not None:
-                self.safe_ui(self.price_controller.on_price, {
-                    "symbol": self.current_symbol,
-                    "price": mid,
-                    "bid": mid,
-                    "ask": mid,
-                })
-
-            self.safe_ui(self.orderbook.update_depth, bids, asks)
+            self.safe_ui(
+                self.positions_table.render,
+                positions
+            )
 
         except Exception as e:
-            print("[fetch_orderbook ERROR]", e)
+            print("[fetch_account_state ERROR]", e)
 
-    def open_preferences(self):
-        dlg = PreferencesDialog(
-            setting=self.trade_setting,
-            parent=self
+    async def reload_reservations(self):
+        await self.reservation_controller.refresh()
+        # self.reservationWidget.update_rows(rows)
+
+    # # =====================================================
+    # # ORDERBOOK
+    # # =====================================================
+    # def on_orderbook_click(self, row, col):
+    #     if col == PRICE_COL:
+    #         return
+    #
+    #     item = self.tableOrderbook.item(row, PRICE_COL)
+    #     if not item:
+    #         return
+    #
+    #     try:
+    #         price = float(item.text().replace(",", ""))
+    #     except ValueError:
+    #         return
+    #
+    #     side = "SELL" if col <= 3 else "BUY"
+    #     self.order_controller.place_limit_from_book(
+    #         side=side, price=price, qty=1
+    #     )
+
+    def update_account_summary(self, data: dict):
+        if not data:
+            return
+
+        deposit = float(data.get("deposit", 0))
+        available = float(data.get("available", 0))
+        pnl = float(data.get("unrealized_pnl", 0))
+        rate = float(data.get("unrealized_pnl_rate", 0))
+
+        self.lblDeposit.setText(fmt_money(deposit))
+        self.lblAvailable.setText(fmt_money(available))
+        self.lblPnL.setText(fmt_pnl(pnl))
+        self.lblPnLRate.setText(fmt_rate(rate) + "%")
+
+        # 색상
+        if pnl > 0:
+            self.lblPnL.setStyleSheet("color:#2ecc71;")
+        elif pnl < 0:
+            self.lblPnL.setStyleSheet("color:#e74c3c;")
+        else:
+            self.lblPnL.setStyleSheet("color:#cccccc;")
+
+    # =====================================================
+    # WS CALLBACKS
+    # =====================================================
+    # def _on_trade_ws(self, data: dict):
+    #     self.exec_strength.add_trade(data)
+    #     strength = self.exec_strength.calc()
+    #
+    #     self.safe_ui(self.topBar.update_exec_strength, strength)
+    #     self.safe_ui(self.time_sales_controller.on_trade, data)
+
+    # async def _start_trade_ws_initial(self):
+    #     if self.trade_ws:
+    #         return
+    #
+    #     self.time_sales_controller.clear()
+    #
+    #     self.trade_ws = TradesWSClient(
+    #         symbol=self.current_symbol,
+    #         callback=self._on_trade_ws,
+    #     )
+    #     await self.trade_ws.start()
+
+    def safe_ui_handle_execution(self, msg: dict):
+        data = msg.get("data", {}) if msg.get("type") == "execution" else msg
+        if not data:
+            return
+
+        self.executions_table.append_row(data)
+        self.show_toast(
+            f"{data.get('symbol')} {data.get('side')} {data.get('qty')} @ {data.get('price')} 체결"
         )
-        dlg.exec()
 
-    def on_open_chart(self):
-        symbol = self.current_symbol  # 예: "BTCUSDT"
+    def safe_ui_update_account_ws(self, data):
+        if data.get("type") != "account_update":
+            return
 
-        self.chart_popup = ChartPopup(symbol, self)
-        self.chart_popup.show()
+        # self.positions_table.render(data.get("positions", []))
+        # self.balance_widget.update_balance(data.get("account", {}))
 
-        # 테스트용 더미 캔들
-        candles = [
-            {"time": "2024-12-01", "open": 88500, "high": 89000, "low": 88000, "close": 88800},
-            {"time": "2024-12-02", "open": 88800, "high": 89500, "low": 88400, "close": 89200},
-            {"time": "2024-12-03", "open": 89200, "high": 90000, "low": 89000, "close": 89800},
-        ]
+    def setup_reservation_tab(self):
+        # 버튼 바
+        self.reservationActionBar = QWidget()
+        bar = QHBoxLayout(self.reservationActionBar)
+        bar.setContentsMargins(6, 6, 6, 6)
+        bar.setSpacing(8)
 
-        self.chart_popup.set_candles(candles)
+        self.btnSellReserveCancel = QPushButton("매도예약취소")
+        self.btnBuyReserveCancel = QPushButton("매수예약취소")
+        self.btnSymbolCancel = QPushButton("종목취소")
+        self.btnAllCancel = QPushButton("일괄취소")
 
-    def _update_feed_status(self):
-        status = self.price_controller.get_feed_status()
-        latency = random.randint(8, 30)  # dummy
+        self.btnAllCancel.clicked.connect(self.cancel_all_reservations)
+        self.btnSymbolCancel.clicked.connect(self.cancel_symbol_reservations)
 
-        self.top_Bar.update_status_by_controller(status, latency)
 
-    # -------------------------
-    # Shutdown
-    # -------------------------
-    def logout(self):
+        for btn in (
+                self.btnSellReserveCancel,
+                self.btnBuyReserveCancel,
+                self.btnSymbolCancel,
+                self.btnAllCancel,
+        ):
+            btn.setFixedHeight(28)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        bar.addWidget(self.btnSellReserveCancel)
+        bar.addWidget(self.btnBuyReserveCancel)
+        bar.addStretch()
+        bar.addWidget(self.btnSymbolCancel)
+        bar.addWidget(self.btnAllCancel)
+
+        # 예약 테이블
+        self.reservationWidget = ReservationWidget()
+
+        self.reservationLayout.addWidget(self.reservationActionBar)
+        self.reservationLayout.addWidget(self.reservationWidget)
+
+    async def cancel_all_reservations(self):
+        await self.api.cancel_reservations(scope="ALL")
+
+    async def cancel_symbol_reservations(self):
+        symbol = self.current_symbol
+        await self.api.cancel_reservations(scope="SYMBOL", symbol=symbol)
+
+    def on_execution_received(self, event: dict):
+        exec_type = event.get("exec_type")
+
+        if exec_type == "TRADE":
+            self.time_sales_controller.on_trade(event)
+        elif exec_type == "STATUS":
+            self.reservation_controller.on_status_event(event)
+
+
+    # =====================================================
+    # FETCHERS
+    # =====================================================
+    async def load_ls_watchlist(self):
+        rows = await self.ls_api.get(
+            "/ls/futures/watchlist",
+            params={"only_has_price": False, "limit": 200},
+        )
+        self.safe_ui(self.ls_watchlist_controller.load_rows, rows)
+
+    def load_favorites(self):
+        try:
+            for fav in self.favorite_api.list():
+                self.favoriteBar.add_symbol(fav["symbol_code"])
+        except Exception as e:
+            print("[Favorite] load failed:", e)
+
+    # =====================================================
+    # CLOCK
+    # =====================================================
+    def _on_clock_tick(self):
+        asyncio.create_task(self.update_ls_clock())
+
+    async def update_ls_clock(self):
+        try:
+            data = await self.ls_api.get("/ls/futures/time")
+            t = data.get("ls_time")
+            if isinstance(t, str) and len(t) >= 6:
+                self._last_ls_time = f"{t[:2]}:{t[2:4]}:{t[4:6]}"
+            if self._last_ls_time:
+                self.labelClock.setText(self._last_ls_time)
+        except Exception:
+            if self._last_ls_time:
+                self.labelClock.setText(self._last_ls_time)
+
+    # =====================================================
+    # UTIL
+    # =====================================================
+    def show_toast(self, text: str):
+        ToastMessage(self, text).show_toast()
+
+    # =====================================================
+    # SHUTDOWN
+    # =====================================================
+    def closeEvent(self, event):
         self.running = False
-        self.api.clear_token()
-        self.close()
-        self.show_login_window_callback()
+        self.enqueue_async(self.shutdown())
+        event.accept()
 
     async def shutdown(self):
         try:
-            if getattr(self, "bg_controller", None):
+            if self.bg_controller:
                 await self.bg_controller.stop()
-
-            if getattr(self, "ws", None):
-                await self.ws.stop()
-
-            if getattr(self, "exec_ws", None):
+            if self.exec_ws:
                 await self.exec_ws.stop()
-
-            if getattr(self, "account_ws", None):
+            if self.account_ws:
                 await self.account_ws.stop()
-
-            if getattr(self, "trade_ws", None):
-                await self.trade_ws.stop()
-
+            # if self.trade_ws:
+            #     await self.trade_ws.stop()
             self._queue.put_nowait(None)
         finally:
-            if getattr(self, "_worker_task", None):
+            if self._worker_task:
                 self._worker_task.cancel()
 
-    async def close_symbol_position(self):
-        try:
-            await asyncio.to_thread(
-                self.position_api.close_symbol,
-                self.account_id,
-                self.current_symbol
-            )
-            self.show_toast(f"{self.current_symbol} 종목 청산")
-        except Exception as e:
-            print("[Symbol Close ERROR]", e)
-
-    # MainWindow
-    def request_all_close(self):
-        self.enqueue_async(self.close_all_positions())
-
-    async def close_all_positions(self):
-        try:
-            await asyncio.to_thread(
-                self.position_api.close_all,
-                self.account_id
-            )
-            self.show_toast("🚨 전체 포지션 청산")
-        except Exception as e:
-            print("[All Close ERROR]", e)
-
-    def closeEvent(self, event):
+    # =====================================================
+    # LOGOUT
+    # =====================================================
+    def logout(self):
+        """
+        TopBar / 메뉴에서 호출되는 로그아웃
+        """
         self.running = False
-        # ✅ pending task 정리
+
+        # WS / 백그라운드 정리
         self.enqueue_async(self.shutdown())
-        event.accept()
+
+        # 토큰 제거
+        if self.api:
+            self.api.clear_token()
+
+        # 창 닫고 로그인 화면으로
+        self.close()
+        self.show_login_window_callback()
+

@@ -56,10 +56,9 @@ class LoginWindow(QDialog):
     async def _do_login(self):
         email = self.editEmail.text().strip()
         password = self.editPassword.text().strip()
-
         try:
             login_res = await self.api.login(email, password)
-
+            # print(login_res)
             if "access_token" in login_res:
                 # QMessageBox.information(self, "Login", "로그인 성공!")
 
@@ -67,7 +66,7 @@ class LoginWindow(QDialog):
                 token = login_res["access_token"]
                 user = login_res["user_id"]
                 account_id = login_res["account_id"]
-                print(token, user, account_id)
+                # print(token, user, account_id)
                 # 🔥 MainWindow 열기
                 if self.on_login_success:
                     self.on_login_success(token, user, account_id)

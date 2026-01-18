@@ -1,21 +1,29 @@
 from datetime import datetime
 
+
+# -------------------------
+# 기본 숫자 포맷
+# -------------------------
 def format_num(n):
+    if n is None:
+        return ""
     return f"{n:,.2f}"
 
-from datetime import datetime
 
+# -------------------------
+# 시간 포맷
+# -------------------------
 def fmt_time(ts) -> str:
     if not ts:
         return ""
 
     try:
-        # 🔥 Unix timestamp (float / int)
+        # Unix timestamp
         if isinstance(ts, (int, float)):
             dt = datetime.fromtimestamp(ts)
             return dt.strftime("%H:%M:%S")
 
-        # 문자열인 경우 (ISO)
+        # ISO 문자열
         s = str(ts).replace("Z", "").replace(" ", "T")
         dt = datetime.fromisoformat(s)
         return dt.strftime("%H:%M:%S")
@@ -24,17 +32,54 @@ def fmt_time(ts) -> str:
         return ""
 
 
-def fmt(value, digits=2):
-    if value is None:
-        return ""
-    return f"{value:,.{digits}f}"
-
-
+# -------------------------
+# 🔥 포맷 정의
+# -------------------------
 DISPLAY_FORMAT = {
+    "money": 2,
+    "rate": 2,
+    "price": 2,
+    "qty": 2,
+    "pnl": 2,
+
+    # 종목별 override
     "BTCUSDT": {"price": 2, "qty": 3, "pnl": 2},
     "ETHUSDT": {"price": 2, "qty": 3, "pnl": 2},
     "SOLUSDT": {"price": 2, "qty": 2, "pnl": 2},
 }
 
 DEFAULT_FMT = {"price": 2, "qty": 2, "pnl": 2}
+
+
+# -------------------------
+# 🔥 핵심 fmt
+# -------------------------
+def fmt(value, fmt_type="price", symbol: str | None = None):
+    if value is None:
+        return ""
+
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return ""
+
+    # 종목별 포맷 우선
+    if symbol and symbol in DISPLAY_FORMAT:
+        digits = DISPLAY_FORMAT[symbol].get(fmt_type, DEFAULT_FMT.get(fmt_type, 2))
+    else:
+        digits = DISPLAY_FORMAT.get(fmt_type, 2)
+
+    return f"{value:,.{digits}f}"
+
+def fmt_money(v):
+    return "" if v is None else f"{v:,.0f}"
+
+def fmt_money_2(v):
+    return "" if v is None else f"{v:,.2f}"
+
+def fmt_rate(v):
+    return "" if v is None else f"{v:.2f}"
+
+def fmt_pnl(v):
+    return "" if v is None else f"{v:,.0f}"
 

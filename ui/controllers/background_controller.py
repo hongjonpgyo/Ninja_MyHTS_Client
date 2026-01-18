@@ -28,5 +28,8 @@ class BackgroundController:
             return
 
         self.main.enqueue_async(self.main.fetch_open_orders())
-        self.main.enqueue_async(self.main.fetch_executions())
-        self.main.enqueue_async(self.main.fetch_orderbook())
+        self.main.enqueue_async(self.main.fetch_ls_quote())
+        # self.main.enqueue_async(self.main.fetch_executions())
+        self.main.enqueue_async(self.main.fetch_account_state())
+
+        # self.main.enqueue_async(self.main.fetch_orderbook())
