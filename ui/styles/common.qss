@@ -1,0 +1,104 @@
+/* =====================================================
+   Global
+===================================================== */
+* {
+    font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic";
+    font-size: 13px;
+    color: #e6e6e6;
+}
+
+/* =====================================================
+   Buttons (⬇ height -4px)
+===================================================== */
+QPushButton {
+    min-height: 21px;
+    max-height: 21px;
+
+    padding: 1px 4px;      /* 🔥 핵심 */
+    font-size: 13px;
+
+    border-radius: 2px;
+    background-color: #3a3a3a;
+    border: 1px solid #4a4a4a;
+}
+
+QPushButton:hover {
+    background-color: #4a4a4a;
+}
+
+QPushButton:pressed {
+    background-color: #2f2f2f;
+}
+
+/* 시장가 매도 (파랑) */
+QPushButton#btnMarketSell {
+    color: #4aa3ff;
+    font-weight: 600;
+}
+
+/* 시장가 매수 (빨강) */
+QPushButton#btnMarketBuy {
+    color: #ff5a5a;
+    font-weight: 600;
+}
+
+/* =====================================================
+   LineEdit / SpinBox (버튼 체급 맞춤)
+===================================================== */
+QLineEdit,
+QSpinBox,
+QDoubleSpinBox {
+    min-height: 23px;
+    padding: 0 6px;
+    border-radius: 4px;
+    background-color: #1e1e1e;
+    border: 1px solid #444;
+}
+
+QLineEdit:focus,
+QSpinBox:focus,
+QDoubleSpinBox:focus {
+    border: 1px solid #5a9cff;
+}
+
+QSpinBox::up-button,
+QSpinBox::down-button,
+QDoubleSpinBox::up-button,
+QDoubleSpinBox::down-button {
+    width: 13px;
+}
+
+/* =====================================================
+   CheckBox
+===================================================== */
+QCheckBox {
+    spacing: 6px;
+    font-size: 13px;
+}
+
+QCheckBox::indicator {
+    width: 15px;
+    height: 15px;
+}
+
+QCheckBox::indicator:unchecked {
+    border: 1px solid #555;
+    background-color: #1e1e1e;
+}
+
+QCheckBox::indicator:checked {
+    border: 1px solid #5a9cff;
+    background-color: #5a9cff;
+}
+
+/* =====================================================
+   Labels
+===================================================== */
+QLabel {
+    font-size: 13px;
+}
+
+QLabel#labelClock {
+    color: #00ff8b;
+    font-weight: 600;
+}

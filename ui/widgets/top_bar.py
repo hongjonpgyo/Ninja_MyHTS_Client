@@ -19,7 +19,7 @@ class TopBarWidget(QFrame):
         super().__init__(parent)
         self.main_window = parent
         self._setup_ui()
-        self._apply_style()
+        # self._apply_style()
         self.set_dummy_data()   # 🔥 일단 더미부터
 
         self.clock_timer = QTimer(self)

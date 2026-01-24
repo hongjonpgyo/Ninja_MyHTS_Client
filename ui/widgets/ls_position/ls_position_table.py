@@ -2,21 +2,26 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QAbstractItemView, QHeaderView
 )
 from PyQt6.QtGui import QColor, QFont
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 
+from ui.ls_controllers import ls_order_controller
+from ui.ls_controllers.ls_order_controller import OrderController
 from ui.utils.formatter import fmt
 from ui.utils.formatter import DISPLAY_FORMAT, DEFAULT_FMT
+from ui.widgets.ls_position.ls_protection_editor import LSProtectionEditor
 
 
 class LSPositionsTable(QTableWidget):
+    positionSelected = pyqtSignal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-
         self.setColumnCount(6)
         self.setHorizontalHeaderLabels(
             ["종목명", "포지션", "수량", "평균단가", "평가손익", "강제청산가"]
         )
+        self._open_protections = set()  # symbol set
+        self._protection_rows = {}
 
         # -----------------------------
         # 기본 동작 설정
@@ -37,61 +42,42 @@ class LSPositionsTable(QTableWidget):
         for i in range(self.columnCount() - 1):
             header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
 
-        self.setStyleSheet("""
-        QTableWidget {
-            background-color: #1f1f1f;
-            color: #e0e0e0;
-            font-size: 12px;
-        }
-        QHeaderView::section {
-            background-color: #2b2b2b;
-            color: #cccccc;
-            font-size: 11px;
-            padding: 6px;
-            border: none;
-        }
-        QTableWidget::item:selected {
-            background-color: #2e3f5f;
-        }
-        """)
-
         self._prev_rows = []
 
         # 공통 폰트
         self.bold_font = QFont()
         self.bold_font.setBold(True)
 
+        self.itemSelectionChanged.connect(self._on_selection_changed)
+
     # ----------------------------------------------------------
     # 🔥 Flicker-Free Render
     # ----------------------------------------------------------
     def render(self, rows):
-        # 🔥 qty == 0 포지션 제외
-        rows = [r for r in rows if float(r.get("qty", 0)) != 0]
+        # 🔥 원본 데이터 보관
+        self._rows = [r for r in rows if float(r.get("qty", 0)) != 0]
 
-        total = len(rows)
+        total = len(self._rows)
         self.setRowCount(total)
 
         if len(self._prev_rows) != total:
             self._prev_rows = [None] * total
 
-        for r, row in enumerate(rows):
+        for r, row in enumerate(self._rows):
             prev = self._prev_rows[r]
 
             if prev is None:
                 self._draw_row(r, row)
-                self._prev_rows[r] = row
-                continue
+            elif prev != row:
+                self._update_changed_cells(r, prev, row)
 
-            if prev == row:
-                continue
-
-            self._update_changed_cells(r, prev, row)
             self._prev_rows[r] = row
 
     # ----------------------------------------------------------
     # 최초 Row 생성
     # ----------------------------------------------------------
     def _draw_row(self, r, row):
+        print(row)
         symbol = row.get("symbol", "")
         fmt_value = DISPLAY_FORMAT.get(symbol, DEFAULT_FMT)
 
@@ -149,6 +135,75 @@ class LSPositionsTable(QTableWidget):
 
         # 스타일은 항상 마지막에
         self._apply_style(r, new)
+
+    def _insert_protection_row(self, position_row: int, symbol: str):
+        if symbol in self._protection_rows:
+            return
+
+        protection_row = position_row + 1
+        self.insertRow(protection_row)
+
+        # 전체 span
+        self.setSpan(protection_row, 0, 1, self.columnCount())
+
+        editor = LSProtectionEditor(symbol, self)
+
+        self.setCellWidget(protection_row, 0, editor)
+        self.setRowHeight(protection_row, 44)
+
+        self._protection_rows[symbol] = protection_row
+
+        # --- 버튼 이벤트 연결 (임시 로그용) ---
+        editor.btn_apply.clicked.connect(
+            lambda: print(f"[PROTECT APPLY] {symbol}")
+        )
+        editor.btn_clear.clicked.connect(
+            lambda: self._remove_protection_row(symbol)
+        )
+
+    def load_protections(self, rows: list[dict]):
+        """
+        rows = [{ symbol, side, type, price, qty }]
+        """
+        if not rows:
+            return
+
+        symbol = rows[0]["symbol"]
+
+        editor = self._get_protection_editor(symbol)
+        if not editor:
+            return
+
+        editor.load_protections(rows)
+
+    def _get_protection_editor(self, symbol: str):
+        row = self._protection_rows.get(symbol)
+        if row is None:
+            return None
+
+        return self.cellWidget(row, 0)
+
+    def _on_selection_changed(self):
+        row_index = self.currentRow()
+        if row_index < 0:
+            return
+
+        if not hasattr(self, "_rows") or row_index >= len(self._rows):
+            return
+
+        row_data = self._rows[row_index]
+
+        print("SELECT:", row_data)
+
+        data = {
+
+            "symbol": row_data["symbol"],
+            "side": row_data["side"],
+            "qty": int(row_data["qty"]),
+            "avg_price": float(row_data["avg_price"]),
+        }
+
+        self.positionSelected.emit(data)
 
     # ----------------------------------------------------------
     # SetItem Helper

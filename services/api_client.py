@@ -147,3 +147,18 @@ class APIClient:
             json={"token": token, "new_password": new_password},
         )
 
+    async def place_protection_order(self, payload: dict):
+        return await self.post(
+            "/ls/futures/protections",
+            json=payload,
+        )
+
+    async def get_protections(self, account_id: int, symbol: str | None = None):
+        params = {"account_id": account_id}
+        if symbol:
+            params["symbol"] = symbol
+
+        return await self.get(
+            "/ls/futures/protections",
+            params=params,
+        )

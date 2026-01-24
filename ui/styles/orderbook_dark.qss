@@ -1,0 +1,42 @@
+/* ==============================
+   ORDERBOOK DARK THEME
+============================== */
+
+/* ---------- Bid / Ask ---------- */
+QLabel#obCell[side="bid"] {
+    color: #22c55e;
+}
+
+QLabel#obCell[side="ask"] {
+    color: #ef4444;
+}
+
+/* ---------- Depth Bar ---------- */
+QWidget#obDepth[side="bid"] {
+    background-color: rgba(34,197,94,0.25);
+}
+
+QWidget#obDepth[side="ask"] {
+    background-color: rgba(239,68,68,0.25);
+}
+
+/* ---------- Lines ---------- */
+QFrame#obLine[role="mid"] {
+    background-color: #facc15;
+    height: 2px;
+}
+
+QFrame#obLine[role="best_bid"] {
+    background-color: rgba(34,197,94,0.6);
+    height: 1px;
+}
+
+QFrame#obLine[role="best_ask"] {
+    background-color: rgba(239,68,68,0.6);
+    height: 1px;
+}
+
+QFrame#obLine[role="trade"] {
+    background-color: rgba(255,255,255,0.35);
+    height: 1px;
+}

@@ -1,14 +1,12 @@
 # Client configuration
 
 # REST_URL = "http://127.0.0.1:9000"
-WS_URL = "ws://127.0.0.1:9000/ws"
+# WS_URL = "ws://127.0.0.1:9000/ws"
 LS_BASE_URL = "http://127.0.0.1:9001"
 
 ORDERBOOK_DEPTH = 100
 DEFAULT_SYMBOLS = [
-    "BTCUSDT",
-    "ETHUSDT",
-    "SOLUSDT",
+    "HSIF6",
 ]
 # YAHOO_SYMBOL_MAP = {
 #     "ESZ25": "ES=F",      # S&P500 선물
@@ -20,9 +18,9 @@ DEFAULT_SYMBOLS = [
 #     "NQ": "NQ=F",
 #     "MNQ": "MNQ=F",
 # }
-BINANCE_SYMBOLS = {
-    "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT",
-}
+# BINANCE_SYMBOLS = {
+#     "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT",
+# }
 
 # 선물/지수쪽은 일단 분리 (차후 source registry로 확장 가능)
 FUTURES_SYMBOLS = {"NQ", "MNQ"}

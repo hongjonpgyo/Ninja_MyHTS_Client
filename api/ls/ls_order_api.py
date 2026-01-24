@@ -30,7 +30,6 @@ class LSOrderApi:
     # -------------------------------
     async def cancel_orders(self, order_ids: list[int]):
         print('order_ids')
-        print(order_ids)
         return await self.api.post(
             "/ls/futures/orders/cancel_orders",
             json={"order_ids": order_ids}
@@ -43,4 +42,14 @@ class LSOrderApi:
         return await self.api.post(
             "/orders",
             json=payload
+        )
+
+    async def get_protections(self, account_id: int, symbol: str | None = None):
+        params = {"account_id": account_id}
+        if symbol:
+            params["symbol"] = symbol
+
+        return await self.api.get(
+            "/ls/futures/protections",
+            params=params,
         )

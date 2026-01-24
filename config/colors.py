@@ -24,3 +24,9 @@ ORDERBOOK_COLORS = {
     "mit_buy_bg": "#E2F2FF",      # MIT 매수
 }
 
+RESERVATION_COLORS = {
+    "예약": "#9e9e9e",   # gray
+    "익절": "#2ecc71",   # green
+    "손절": "#e74c3c",   # red
+}
+

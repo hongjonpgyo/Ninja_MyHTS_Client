@@ -30,24 +30,24 @@ class TimeSalesController:
         h.setStretchLastSection(True)
         h.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # 🎨 스타일 통일
-        t.setStyleSheet("""
-        QTableWidget {
-            background-color: #1f1f1f;
-            color: #e0e0e0;
-            font-size: 12px;
-        }
-        QHeaderView::section {
-            background-color: #2b2b2b;
-            color: #cccccc;
-            font-size: 11px;
-            padding: 6px;
-            border: none;
-        }
-        QTableWidget::item:selected {
-            background-color: transparent;
-        }
-        """)
+        # # 🎨 스타일 통일
+        # t.setStyleSheet("""
+        # QTableWidget {
+        #     background-color: #1f1f1f;
+        #     color: #e0e0e0;
+        #     font-size: 12px;
+        # }
+        # QHeaderView::section {
+        #     background-color: #2b2b2b;
+        #     color: #cccccc;
+        #     font-size: 11px;
+        #     padding: 6px;
+        #     border: none;
+        # }
+        # QTableWidget::item:selected {
+        #     background-color: transparent;
+        # }
+        # """)
 
     # -------------------------------------------------
     def clear(self):

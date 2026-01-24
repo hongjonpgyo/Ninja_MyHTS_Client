@@ -26,7 +26,7 @@ class LSWatchListController:
         self.bold_font.setBold(True)
 
         self._init_table()
-        self._apply_style()
+        # self._apply_style()
 
         self.table.cellClicked.connect(self._on_cell_clicked)
 
@@ -48,37 +48,6 @@ class LSWatchListController:
 
         t.horizontalHeader().setStretchLastSection(True)
         t.verticalHeader().setDefaultSectionSize(24)
-
-    # -------------------------------------------------
-    # Style (체결현황과 동일 계열)
-    # -------------------------------------------------
-    def _apply_style(self):
-        self.table.setShowGrid(False)
-        self.table.setStyleSheet("""
-        QTableWidget {
-            background-color: #1f1f1f;
-            color: #e0e0e0;
-            font-size: 12px;
-            border: none;
-        }
-
-        QTableWidget::item {
-            border: none;
-            padding: 4px 6px;
-        }
-
-        QTableWidget::item:selected {
-            background-color: #2b2b2b;
-        }
-
-        QHeaderView::section {
-            background-color: #2a2a2a;
-            color: #bfbfbf;
-            font-size: 11px;
-            padding: 6px;
-            border: none;
-        }
-        """)
 
     # -------------------------------------------------
     # Public

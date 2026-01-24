@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QTableWidget,
     QTableWidgetItem,
-    QPushButton,
+    QPushButton, QHeaderView,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont
@@ -28,7 +28,8 @@ class ReservationWidget(QWidget):
     COL_TRIGGER = 4
     COL_ORDER = 5
     COL_STATUS = 6
-    COL_CANCEL = 7
+    COL_TYPE = 7
+    COL_CANCEL = 8
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -50,44 +51,23 @@ class ReservationWidget(QWidget):
     # ==================================================
     def _setup_table(self):
         t = self.table
-        t.setColumnCount(8)
+        t.setColumnCount(9)
         t.setHorizontalHeaderLabels([
-            "시간", "종목", "구분", "수량", "조건", "주문", "상태", "취소"
+            "시간", "종목", "구분", "수량", "조건", "주문", "상태", "유형", "취소"
         ])
 
         t.verticalHeader().setVisible(False)
         t.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         t.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
 
-        # ❌ 제거: 흰 줄 / 강한 경계 원인
         t.setAlternatingRowColors(False)
         t.setShowGrid(False)
 
         h = t.horizontalHeader()
         h.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
-        h.setStretchLastSection(True)
 
-        t.setStyleSheet("""
-        QTableWidget {
-            background-color: #1f1f1f;
-            color: #e0e0e0;
-            font-size: 12px;
-            border: none;
-        }
-
-        QTableWidget::item {
-            padding: 6px;
-            border: none;
-        }
-
-        QHeaderView::section {
-            background-color: #2a2a2a;
-            color: #bfbfbf;
-            font-size: 11px;
-            padding: 6px;
-            border: none;
-        }
-        """)
+        # ✅ 핵심: 모든 컬럼 동일 비율
+        h.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
     # ==================================================
     # Public API
@@ -114,6 +94,7 @@ class ReservationWidget(QWidget):
         self.table.setItem(row, self.COL_TRIGGER, self._trigger_item(r))
         self.table.setItem(row, self.COL_ORDER, self._order_item(r))
         self.table.setItem(row, self.COL_STATUS, self._status_item(r["status"]))
+        self.table.setItem(row, self.COL_TYPE, self._type_item(r))
 
         self._row_reservation_map[row] = r["reservation_id"]
 
@@ -121,16 +102,16 @@ class ReservationWidget(QWidget):
         if r["status"] == "WAITING":
             btn = QPushButton("✕")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn.setStyleSheet("""
-                QPushButton {
-                    color: #777777;
-                    font-size: 13px;
-                    border: none;
-                }
-                QPushButton:hover {
-                    color: #e74c3c;
-                }
-            """)
+            # btn.setStyleSheet("""
+            #     QPushButton {
+            #         color: #777777;
+            #         font-size: 13px;
+            #         border: none;
+            #     }
+            #     QPushButton:hover {
+            #         color: #e74c3c;
+            #     }
+            # """)
             btn.clicked.connect(
                 lambda _, rid=r["reservation_id"]:
                 asyncio.create_task(self.on_cancel(rid))
@@ -151,6 +132,22 @@ class ReservationWidget(QWidget):
             text = created_at.strftime("%H:%M:%S")
 
         return self._center_item(text)
+
+    def _type_item(self, r: dict):
+        t = self.resolve_reservation_type(r)
+
+        it = QTableWidgetItem(t)
+        it.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        it.setFont(self.bold_font)
+
+        if t == "익절":
+            it.setForeground(QColor("#2ecc71"))
+        elif t == "손절":
+            it.setForeground(QColor("#e74c3c"))
+        else:  # 예약
+            it.setForeground(QColor("#aaaaaa"))
+
+        return it
 
     def _side_item(self, side: str):
         it = QTableWidgetItem("매수" if side == "BUY" else "매도")
@@ -220,3 +217,12 @@ class ReservationWidget(QWidget):
             if status != "WAITING":
                 self.table.setCellWidget(row, self.COL_CANCEL, None)
             break
+
+    def resolve_reservation_type(row: dict) -> str:
+        if row.get("protection_id") is not None:
+            if row.get("protection_type") == "TP":
+                return "익절"
+            else:
+                return "손절"
+        return ""
+

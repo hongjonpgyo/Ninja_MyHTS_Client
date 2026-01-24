@@ -44,9 +44,6 @@
                 <pointsize>19</pointsize>
                </font>
               </property>
-              <property name="styleSheet">
-               <string notr="true"/>
-              </property>
               <layout class="QVBoxLayout" name="orderbookControlLayout">
                <property name="spacing">
                 <number>5</number>
@@ -160,7 +157,7 @@
                </item>
                <item>
                 <layout class="QHBoxLayout">
-                 <item>
+                 <item alignment="Qt::AlignRight">
                   <widget class="QCheckBox" name="chkStop">
                    <property name="font">
                     <font>
@@ -181,12 +178,15 @@
                    </property>
                   </widget>
                  </item>
-                 <item>
+                 <item alignment="Qt::AlignRight">
                   <widget class="QCheckBox" name="chkTake">
                    <property name="font">
                     <font>
                      <pointsize>11</pointsize>
                     </font>
+                   </property>
+                   <property name="layoutDirection">
+                    <enum>Qt::LeftToRight</enum>
                    </property>
                    <property name="text">
                     <string>익절</string>
@@ -212,6 +212,9 @@
                    <property name="text">
                     <string>수량</string>
                    </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
                   </widget>
                  </item>
                  <item>
@@ -224,7 +227,7 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QPushButton" name="pushButton">
+                  <widget class="QPushButton" name="btnQty1">
                    <property name="font">
                     <font>
                      <pointsize>11</pointsize>
@@ -236,7 +239,7 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QPushButton" name="pushButton">
+                  <widget class="QPushButton" name="btnQty2">
                    <property name="font">
                     <font>
                      <pointsize>11</pointsize>
@@ -248,7 +251,31 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QPushButton" name="pushButton">
+                  <widget class="QPushButton" name="btnQty3">
+                   <property name="font">
+                    <font>
+                     <pointsize>11</pointsize>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>3</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="btnQty4">
+                   <property name="font">
+                    <font>
+                     <pointsize>11</pointsize>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>4</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="btnQty5">
                    <property name="font">
                     <font>
                      <pointsize>11</pointsize>
@@ -256,6 +283,18 @@
                    </property>
                    <property name="text">
                     <string>5</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="btnQty10">
+                   <property name="font">
+                    <font>
+                     <pointsize>11</pointsize>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>10</string>
                    </property>
                   </widget>
                  </item>
@@ -271,7 +310,7 @@
                     </font>
                    </property>
                    <property name="text">
-                    <string>시장가매도(F11)</string>
+                    <string>시장가매도(F4)</string>
                    </property>
                   </widget>
                  </item>
@@ -283,7 +322,7 @@
                     </font>
                    </property>
                    <property name="text">
-                    <string>일괄청산</string>
+                    <string>전정목청산(F5)</string>
                    </property>
                   </widget>
                  </item>
@@ -328,7 +367,7 @@
                     </font>
                    </property>
                    <property name="text">
-                    <string>종목청산</string>
+                    <string>현종목청산(F8)</string>
                    </property>
                   </widget>
                  </item>
@@ -340,7 +379,7 @@
                     </font>
                    </property>
                    <property name="text">
-                    <string>시장가매수(F12)</string>
+                    <string>시장가매수(F9)</string>
                    </property>
                   </widget>
                  </item>
@@ -362,13 +401,6 @@
            </layout>
           </widget>
           <widget class="QTabWidget" name="bottomTabs">
-           <property name="styleSheet">
-            <string notr="true">
-QTabBar::tab { width:90px;height:32px; }
-QTabBar::tab:selected { background:#3a7afe;color:white;font-weight:bold; }
-QTabBar::tab:!selected { background:#2b2b2b;color:#bbbbbb; }
-            </string>
-           </property>
            <property name="tabPosition">
             <enum>QTabWidget::North</enum>
            </property>

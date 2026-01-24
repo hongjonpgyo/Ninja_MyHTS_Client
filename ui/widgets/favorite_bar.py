@@ -13,7 +13,7 @@ class FavoriteBar(QFrame):
         self.setObjectName('FavoriteBar')
         self.buttons = {}   # symbol -> button
         self._setup_ui()
-        self._apply_style()
+        # self._apply_style()
 
     def _setup_ui(self):
         self.setFixedHeight(36)

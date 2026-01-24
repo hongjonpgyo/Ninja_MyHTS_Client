@@ -1,0 +1,19 @@
+QWidget#OrderBook {
+    background-color: #ffffff;
+}
+
+QLabel#obCell[side="bid"] {
+    color: #15803d;
+}
+
+QLabel#obCell[side="ask"] {
+    color: #b91c1c;
+}
+
+QFrame#gridLine {
+    background-color: #e5e7eb;
+}
+
+QFrame#obLine[role="mid"] {
+    background-color: #ca8a04;
+}

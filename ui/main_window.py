@@ -1,6 +1,7 @@
 # ui/main_window.py
 import asyncio
 
+from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtWidgets import QMainWindow, QSizePolicy, QWidget, QHBoxLayout, QPushButton
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, Qt
@@ -39,6 +40,7 @@ from ui.settings.trade_setting import UserTradeSetting
 # Widgets
 # -------------------------
 from ui.widgets.favorite_bar import FavoriteBar
+from ui.widgets.ls_position.ls_position_protection_panel import LSPositionProtectionPanel
 from ui.widgets.ls_reservation.reservation_widget import ReservationWidget
 from ui.widgets.order_control_bar import OrderControlBar
 from ui.widgets.ls_orderbook.ls_orderbook_widget import LSOrderBookWidget
@@ -55,7 +57,7 @@ from ui.workers.execution_stream_worker import ExecutionStreamWorker
 
 from config.settings import LS_BASE_URL
 
-FIXED_WIDTH = 1400
+FIXED_WIDTH = 1490
 PRICE_COL = 4
 
 
@@ -69,7 +71,7 @@ class MainWindow(QMainWindow):
         # -------------------------
         # UI Load
         # -------------------------
-        loadUi("ui/main_window_20260111.ui", self)
+        loadUi("ui/main_window_20260123.ui", self)
         self.setFixedWidth(FIXED_WIDTH)
 
         # -------------------------
@@ -101,23 +103,26 @@ class MainWindow(QMainWindow):
         # -------------------------
         self.ls_account_api = LSAccountApi(self.ls_api)
         self.position_api = PositionApi(self.api)
-        self.order_api = LSOrderApi(self.ls_api)
+        self.order_api = LSOrderApi(self.api)
 
         # -------------------------
         # UI Components
         # -------------------------
         self._init_top_bar()
+        self.price_controller = PriceController(top_bar=self.topBar)
+
         self._init_orderbook()
+        self.order_controller = OrderController(main_window=self, api=self.ls_api)
+
         self._init_watchlist()
         self._init_bottom_tabs()
         self._init_right_panel()
 
-        # -------------------------
-        # Controllers
-        # -------------------------
-        self.price_controller = PriceController(top_bar=self.topBar)
-        self.order_controller = OrderController(main_window=self, api=self.ls_api)
         self.bg_controller = BackgroundController(self, interval=0.5)
+
+        self.orderbook.priceClicked.connect(
+            self.protection_panel.on_price_clicked
+        )
 
         self.orderbook.set_order_controller(self.order_controller)
 
@@ -136,9 +141,9 @@ class MainWindow(QMainWindow):
         self.clock_timer.timeout.connect(self._on_clock_tick)
         self.clock_timer.start(1000)
 
-        self.labelClock.setStyleSheet(
-            "color:#00ff99;font-weight:bold;font-size:13px;"
-        )
+        # self.labelClock.setStyleSheet(
+        #     "color:#00ff99;font-weight:bold;font-size:13px;"
+        # )
 
         # -------------------------
         # Layout tuning
@@ -161,23 +166,29 @@ class MainWindow(QMainWindow):
         self.execution_worker.start()  # ← 이게 없으면 100% 안 뜸
 
         self.orderbookControlLayout.setContentsMargins(8, 6, 8, 6)
-        self.orderbookControlBar.setStyleSheet("""
-        QFrame#orderbookControlBar {
-            background-color: #1f1f1f;
-            border-bottom: 1px solid #2b2b2b;
-        }
-
-        QFrame#orderbookControlBar QLabel {
-            color: #cccccc;
-            font-size: 11px;
-        }
-
-        QFrame#orderbookControlBar QLabel#lblPnL {
-            font-weight: bold;
-        }
-        """)
 
         self.bottomTabs.currentChanged.connect(self.on_tab_changed)
+
+        self.btnMarketSell.clicked.connect(
+            lambda: self._place_market("SELL")
+        )
+        self.btnMarketBuy.clicked.connect(
+            lambda: self._place_market("BUY")
+        )
+
+        # F4 = 시장가 매도
+        act_sell = QAction(self)
+        act_sell.setShortcut(QKeySequence("F4"))
+        act_sell.triggered.connect(lambda: self._place_market("SELL"))
+        self.addAction(act_sell)
+
+        # F9 = 시장가 매수
+        act_buy = QAction(self)
+        act_buy.setShortcut(QKeySequence("F9"))
+        act_buy.triggered.connect(lambda: self._place_market("BUY"))
+        self.addAction(act_buy)
+
+        self._bind_qty_buttons()
 
     def on_tab_changed(self, idx):
         print('tabName : ' + self.bottomTabs.widget(idx).objectName())
@@ -225,7 +236,13 @@ class MainWindow(QMainWindow):
 
     def _init_bottom_tabs(self):
         self.positions_table = LSPositionsTable()
+        self.protection_panel = LSPositionProtectionPanel(order_controller=self.order_controller, parent=self)
         self.positionsLayout.addWidget(self.positions_table)
+        self.positionsLayout.addWidget(self.protection_panel)
+        self.positions_table.positionSelected.connect(
+            # self.protection_panel.load_position
+            self.on_position_selected
+        )
 
         self.balance_widget = LSBalanceTable()
         self.accountLayout.addWidget(self.balance_widget)
@@ -246,6 +263,17 @@ class MainWindow(QMainWindow):
             self.symbolSummary,
         )
 
+    def _bind_qty_buttons(self):
+        self.btnQty1.clicked.connect(lambda: self.set_qty(1))
+        self.btnQty2.clicked.connect(lambda: self.set_qty(2))
+        self.btnQty3.clicked.connect(lambda: self.set_qty(3))
+        self.btnQty4.clicked.connect(lambda: self.set_qty(4))
+        self.btnQty5.clicked.connect(lambda: self.set_qty(5))
+        self.btnQty10.clicked.connect(lambda: self.set_qty(10))
+
+    def set_qty(self, value: int):
+        self.spinQty.setValue(value)
+
     def _tune_splitters(self):
         # self.splitterRoot.setStretchFactor(0, 6)
         # self.splitterRoot.setStretchFactor(1, 5)
@@ -255,13 +283,14 @@ class MainWindow(QMainWindow):
         #
         # self.splitterTop.setStretchFactor(0, 5)
         # self.splitterTop.setStretchFactor(1, 4)
-        self.splitterRoot.setStretchFactor(0, 6)
-        self.splitterRoot.setStretchFactor(1, 5)
+        # 좌측 오더북을 더 크게
+        self.splitterRoot.setStretchFactor(0, 6)  # left
+        self.splitterRoot.setStretchFactor(1, 4)  # right
 
         # 🔥 여기만 바꾸면 됨
         self.splitterLeft.setStretchFactor(0, 3)  # 상단(요약)
         self.splitterLeft.setStretchFactor(1, 5)  # 오더북
-        self.splitterLeft.setStretchFactor(2, 2)  # 하단탭 ↓
+        self.splitterLeft.setStretchFactor(2, 3)  # 하단탭 ↓
 
     # =====================================================
     # SAFE UI / ASYNC QUEUE
@@ -374,6 +403,21 @@ class MainWindow(QMainWindow):
         # Watchlist 클릭과 동일한 흐름으로 처리
         self.enqueue_async(self.change_symbol(symbol))
 
+    def on_position_selected(self, pos: dict):
+        enriched = {
+            **pos,
+            "account_id": self.account_id,
+        }
+
+        # 🔥 1. 보호 패널 완전 초기화
+        self.protection_panel.clear()
+
+        # 🔥 2. 포지션 정보 로드
+        self.protection_panel.load_position(enriched)
+
+        # 🔥 3. 서버에서 보호주문 조회
+        self.order_controller.load_protections(pos["symbol"])
+
     async def fetch_open_orders(self):
         try:
             if self._fetching_open_orders:
@@ -388,11 +432,16 @@ class MainWindow(QMainWindow):
                 orders
             )
 
-            # 2️⃣ OrderBook용 my_orders 생성 (DB 기준)
+            # 2️⃣ OrderBook용 my_orders 생성 (엔진 기준 정규화)
             my_orders = {"SELL": {}, "BUY": {}}
+
+            engine = self.orderbook.engine
             for o in orders:
-                price = round(float(o["price"]), 6)
+                raw_price = float(o["price"])
                 side = o["side"]
+
+                # ✅ 엔진과 100% 동일한 price key
+                price = engine.normalize_price(raw_price)
 
                 my_orders[side][price] = my_orders[side].get(price, 0) + 1
 
@@ -627,6 +676,30 @@ class MainWindow(QMainWindow):
                 self.favoriteBar.add_symbol(fav["symbol_code"])
         except Exception as e:
             print("[Favorite] load failed:", e)
+
+    # ui/main_window.py
+
+    def _place_market(self, side: str):
+        if not self.current_symbol:
+            return
+
+        qty = 1
+        # qty = self.spinQty.value()
+        # if qty <= 0:
+        #     return
+
+        # 실제 주문
+        self.order_controller.place_market_from_book(
+            side=side,
+            qty=qty,
+        )
+
+        # UX 피드백 (선택)
+        if hasattr(self, "orderbook"):
+            self.orderbook.flash_execution(
+                price=self.orderbook.center_price,
+                side=side
+            )
 
     # =====================================================
     # CLOCK

@@ -9,7 +9,6 @@ class SymbolSummaryWidget(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._setup_ui()
-        self._apply_style()
 
     def _setup_ui(self):
         self.setFixedHeight(120)
@@ -41,24 +40,6 @@ class SymbolSummaryWidget(QFrame):
             grid.addWidget(val, r, c + 1)
 
             self.labels[k] = val
-
-    def _apply_style(self):
-        self.setStyleSheet("""
-        QFrame {
-            background-color: #252525;     /* 주변과 자연스럽게 */
-            border: none;                  /* 테두리 제거 */
-        }
-
-        QLabel {
-            color: #9e9e9e;
-            font-size: 11px;
-        }
-
-        QLabel[value="true"] {
-            color: #e0e0e0;
-            font-weight: bold;
-        }
-        """)
 
     def update_ls_symbol(self, row: dict):
         self.labels["전일"].setText(f"{row.get('close_p', '--')}")

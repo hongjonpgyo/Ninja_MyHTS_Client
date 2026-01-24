@@ -90,27 +90,27 @@ class OpenOrdersWidget(QtWidgets.QWidget):
             QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
 
-        self.table.setStyleSheet("""
-        QTableWidget {
-            background-color: #1e1e1e;
-            border: none;
-        }
-        QTableWidget::item {
-            padding: 6px;
-        }
-        QTableWidget::item:hover {
-            background-color: #2a2a2a;
-        }
-        QTableWidget::item:selected {
-            background-color: #1f4f99;
-        }
-        QHeaderView::section {
-            background-color: #2b2b2b;
-            color: white;
-            padding: 6px;
-            border: none;
-        }
-        """)
+        # self.table.setStyleSheet("""
+        # QTableWidget {
+        #     background-color: #1e1e1e;
+        #     border: none;
+        # }
+        # QTableWidget::item {
+        #     padding: 6px;
+        # }
+        # QTableWidget::item:hover {
+        #     background-color: #2a2a2a;
+        # }
+        # QTableWidget::item:selected {
+        #     background-color: #1f4f99;
+        # }
+        # QHeaderView::section {
+        #     background-color: #2b2b2b;
+        #     color: white;
+        #     padding: 6px;
+        #     border: none;
+        # }
+        # """)
 
         main.addWidget(self.table, 1)
 

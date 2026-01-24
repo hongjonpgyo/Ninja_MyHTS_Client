@@ -10,11 +10,6 @@ class LSBalanceTable(QWidget):
 
         self.setObjectName("LSBalanceTable")
         self.setAutoFillBackground(True)
-        self.setStyleSheet("""
-                QWidget {
-                    background-color: #1f1f1f;
-                }
-                """)
 
         # ===============================
         # Fonts

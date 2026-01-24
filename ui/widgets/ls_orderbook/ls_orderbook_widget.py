@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional
 
 from PyQt6.QtWidgets import QWidget, QTableWidget
-from PyQt6.QtCore import QTimer, QPropertyAnimation, QEasingCurve
+from PyQt6.QtCore import QTimer, QPropertyAnimation, QEasingCurve, pyqtSignal
 from PyQt6.QtGui import QColor
 
 from services.ls.ls_orderbook_engine import OrderBookEngine, OrderBookRow
@@ -9,6 +9,8 @@ from ui.widgets.ls_orderbook.ls_orderbook_renderer import OrderBookRenderer
 from config.settings import ORDERBOOK_DEPTH
 
 class LSOrderBookWidget(QWidget):
+    priceClicked = pyqtSignal(float)
+
     COL_MIT_SELL = 0
     COL_SELL = 1
     COL_SELL_CNT = 2
@@ -36,6 +38,7 @@ class LSOrderBookWidget(QWidget):
         self._last_bids: List[Dict] = []
         self._last_asks: List[Dict] = []
         self._last_my_orders: Dict = {}
+        self._protections: list[dict] = []
 
         self.table.cellClicked.connect(self.on_orderbook_click)
 
@@ -44,6 +47,8 @@ class LSOrderBookWidget(QWidget):
         self.renderer.configure_table(total_rows=ORDERBOOK_DEPTH * 2 + 1)
 
         self._scroll_anim: Optional[QPropertyAnimation] = None
+
+        self.auto_center_enabled = False
 
     def set_order_controller(self, controller):
         self.order_controller = controller
@@ -66,6 +71,18 @@ class LSOrderBookWidget(QWidget):
         self.engine.clear()
         self.renderer.render([])
 
+    def set_protections(self, rows: list[dict]):
+        """
+        rows = [
+          { type, price, qty }
+        ]
+        """
+        self._protections = rows or []
+
+        if self.engine.rows:
+            self.engine.apply_protections(self._protections)
+            self.renderer.render(self.engine.rows)
+
     def update_depth(self, bids: List[Dict], asks: List[Dict], center_price: float, my_orders: Optional[Dict] = None):
         self._last_bids = bids or []
         self._last_asks = asks or []
@@ -81,11 +98,17 @@ class LSOrderBookWidget(QWidget):
     def update_my_orders(self, my_orders: Dict):
         my_orders = my_orders or {}
 
-        if my_orders == self._last_my_orders:
-            return
-
+        # 🔥 반드시 저장
         self._last_my_orders = my_orders
-        self._rebuild(full=False)
+
+        # 🔥 핵심: rows에 다시 반영
+        if self.engine.rows:
+            for row in self.engine.rows:
+                row.my_sell_cnt = 0
+                row.my_buy_cnt = 0
+                self.engine._apply_my_orders(row, my_orders)
+
+            self.renderer.render(self.engine.rows)
 
     def update_ls_price(self, ls_price: float):
         """
@@ -130,7 +153,7 @@ class LSOrderBookWidget(QWidget):
             my_orders=self._last_my_orders,
         )
         self.engine.mark_ls_price(self.center_price)
-
+        self.engine.apply_protections(self._protections)
         self.renderer.render(self.engine.rows)
 
         # 방향감 스크롤(아주 살짝)
@@ -170,16 +193,18 @@ class LSOrderBookWidget(QWidget):
             my_orders=self._last_my_orders,
         )
         self.engine.mark_ls_price(self.center_price)
-
+        self.engine.apply_protections(self._protections)
         self.renderer.render(self.engine.rows)
 
         # 기준선은 화면 중앙 쪽에 유지
-        self._scroll_to_center(animated=True)
+        if self.auto_center_enabled:
+            self._scroll_to_center(animated=True)
 
     def _refresh_marks_only(self):
         # mark만 바꾼 후 렌더
         self.renderer.render(self.engine.rows)
-        self._scroll_to_center(animated=False)
+        if self.auto_center_enabled:
+            self._scroll_to_center(animated=False)
 
         # 살짝 pulse
         center_idx = self._find_center_index()
@@ -213,6 +238,8 @@ class LSOrderBookWidget(QWidget):
         for i, r in enumerate(rows):
             r.is_center = (i == ORDERBOOK_DEPTH)
             r.is_ls_price = (r.price == round(self.center_price, 2))
+
+        self.engine.apply_protections(self._protections)
 
     def _make_empty_row(self, price: float) -> OrderBookRow:
         # ✅ 네가 말한 make_empty_row "실제 구현"
@@ -302,12 +329,13 @@ class LSOrderBookWidget(QWidget):
         except ValueError:
             return
 
+        self.priceClicked.emit(price)
+
         qty = 1
 
         # =====================================================
         # ✅ 주문 허용 컬럼 (화이트리스트)
         # =====================================================
-
         # 지정가 SELL
         if col == self.renderer.COL_SELL:
             self.order_controller.place_limit_from_book(

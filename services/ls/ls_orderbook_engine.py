@@ -19,6 +19,10 @@ class OrderBookRow:
     is_ls_price: bool = False
     is_center: bool = False
 
+    # ✅ 보호주문 플래그 (인스턴스 변수)
+    is_tp: bool = False
+    is_sl: bool = False
+
 
 class OrderBookEngine:
     def __init__(self, depth: int, tick_size: float):
@@ -98,9 +102,9 @@ class OrderBookEngine:
 
     def mark_ls_price(self, price: float):
         self.ls_price = price
-        p = self._normalize_price(price)
+        p = self.normalize_price(price)
         for r in self.rows:
-            r.is_ls_price = (self._normalize_price(r.price) == p)
+            r.is_ls_price = (self.normalize_price(r.price) == p)
 
     def clear(self):
         self.rows.clear()
@@ -110,7 +114,7 @@ class OrderBookEngine:
     # ===============================
     # INTERNAL
     # ===============================
-    def _normalize_price(self, price: float) -> float:
+    def normalize_price(self, price: float) -> float:
         """
         tick_size 기준 정규화 (float 오차 방지)
         """
@@ -119,25 +123,25 @@ class OrderBookEngine:
     def _build_price_axis(self, center_price: float) -> List[float]:
         prices: List[float] = []
 
-        center = self._normalize_price(center_price)
+        center = self.normalize_price(center_price)
 
         # ASK (위 → 아래)
         for i in range(self.depth, 0, -1):
-            prices.append(self._normalize_price(center + i * self.tick_size))
+            prices.append(self.normalize_price(center + i * self.tick_size))
 
         # CENTER
         prices.append(center)
 
         # BID (위 → 아래)
         for i in range(1, self.depth + 1):
-            prices.append(self._normalize_price(center - i * self.tick_size))
+            prices.append(self.normalize_price(center - i * self.tick_size))
 
         return prices
 
     def _map_depth(self, depth_list: List[Dict]) -> Dict[float, Dict]:
         out = {}
         for d in depth_list:
-            price = self._normalize_price(float(d["price"]))
+            price = self.normalize_price(float(d["price"]))
             out[price] = {
                 "qty": int(d.get("db_all_qty", 0)),
                 "cnt": int(d.get("cnt", 0)),
@@ -154,10 +158,36 @@ class OrderBookEngine:
         sells = my_orders.get("SELL", {})
         buys = my_orders.get("BUY", {})
 
-        p = self._normalize_price(row.price)
+        p = self.normalize_price(row.price)
 
         if p in sells:
             row.my_sell_cnt = sells[p]
 
         if p in buys:
             row.my_buy_cnt = buys[p]
+
+    def apply_protections(self, protections: list[dict]):
+        """
+        protections = [
+          { "type": "TP", "price": 26850.0 },
+          { "type": "SL", "price": 26600.0 },
+        ]
+        """
+        if not self.rows:
+            return
+
+        tp_prices = set()
+        sl_prices = set()
+
+        for p in protections:
+            price = self.normalize_price(float(p["price"]))
+            if p["type"] == "TP":
+                tp_prices.add(price)
+            elif p["type"] == "SL":
+                sl_prices.add(price)
+
+        for r in self.rows:
+            p = self.normalize_price(r.price)
+            r.is_tp = p in tp_prices
+            r.is_sl = p in sl_prices
+

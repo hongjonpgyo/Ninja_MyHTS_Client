@@ -21,40 +21,57 @@ class OrderBookRenderer:
     def __init__(self, table: QTableWidget):
         self.table = table
 
+        # -----------------------------
+        # Colors
+        # -----------------------------
         self.bg_default = QColor("#1e1e1e")
         self.bg_center = QColor("#242424")
-        self.bg_ls = QColor("#203a52")       # LS 기준선(center) 기본 배경
+        self.bg_ls = QColor("#203a52")
 
-        self.grid = QColor("#3a3a3a")
+        self.tp_line = QColor(46, 204, 113)
+        self.sl_line = QColor(231, 76, 60)
 
-        self.ask_base = QColor(231, 76, 60)   # red
-        self.bid_base = QColor(46, 204, 113)  # green
+        self.tp_bg = QColor(46, 204, 113, 25)
+        self.sl_bg = QColor(231, 76, 60, 25)
+
+        self.ask_base = QColor(231, 76, 60)
+        self.bid_base = QColor(46, 204, 113)
 
         self.fg_normal = QColor("#e0e0e0")
         self.fg_ls = QColor("#ffd54f")
-        self.fg_my = QColor("#ffd54f")
 
+        # -----------------------------
+        # Fonts
+        # -----------------------------
         self.font_price = QFont()
         self.font_price.setBold(True)
 
+        self.font_tag = QFont()
+        self.font_tag.setPointSize(9)
+        self.font_tag.setBold(True)
+
+        # 마지막 rows 캐시 (pulse/flash 복구용)
+        self._last_rows: List[OrderBookRow] = []
+
+    # -------------------------------------------------
+    # Table setup
+    # -------------------------------------------------
     def configure_table(self, total_rows: int):
         self.table.setRowCount(total_rows)
         self.table.setColumnCount(9)
         self.table.setHorizontalHeaderLabels([
             "MIT", "매도", "건수", "잔량",
-            "고정",
+            "가격",
             "잔량", "건수", "매수", "MIT"
         ])
 
-        # ===== 기본 동작 =====
         self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setMouseTracking(True)
-        self.table.setShowGrid(False)  # 🔥 중요
+        self.table.setShowGrid(False)
         self.table.setFrameShape(QTableWidget.Shape.NoFrame)
 
-        # ===== Header =====
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(self.COL_PRICE, QHeaderView.ResizeMode.Fixed)
@@ -62,42 +79,18 @@ class OrderBookRenderer:
 
         self.table.verticalHeader().setVisible(False)
 
-        # ===== 스타일 통합 =====
-        self.table.setStyleSheet("""
-        QTableWidget {
-            background-color: #1f1f1f;
-            color: #e0e0e0;
-            font-size: 12px;
-            border: none;
-        }
-
-        QTableWidget::item {
-            border: none;
-            padding: 4px;
-        }
-
-        QHeaderView::section {
-            background-color: #2a2a2a;
-            color: #bfbfbf;
-            font-size: 11px;
-            padding: 6px;
-            border: none;
-        }
-
-        QTableWidget::item:selected {
-            background-color: transparent;
-        }
-        """)
-
-        # ===== 기본 아이템 생성 =====
         for r in range(total_rows):
             for c in range(9):
                 it = self._get_item(r, c)
                 it.setBackground(QBrush(self.bg_default))
                 it.setForeground(self.fg_normal)
 
+    # -------------------------------------------------
+    # Render
+    # -------------------------------------------------
     def render(self, rows: List[OrderBookRow]):
-        # rows=0이면 그냥 비우기
+        self._last_rows = rows
+
         self.table.setRowCount(len(rows))
         if not rows:
             return
@@ -108,15 +101,13 @@ class OrderBookRenderer:
             self._render_row(r, row, max_qty)
 
     # -------------------------------------------------
-    # FX: Pulse/Flash
+    # FX
     # -------------------------------------------------
     def pulse_center(self, row_idx: int, ms: int = 140):
-        """center row가 바뀔 때 짧게 pulse"""
         self._tint_row(row_idx, QColor("#355f7a"))
-        QTimer.singleShot(ms, lambda: self._restore_row(row_idx))
+        QTimer.singleShot(ms, self._restore_all)
 
     def flash_row(self, row_idx: int, side: Optional[str] = None, ms: int = 180):
-        """체결/이벤트 발생 row flash (BUY=green, SELL=red)"""
         if side == "BUY":
             color = QColor(46, 204, 113, 140)
         elif side == "SELL":
@@ -125,28 +116,59 @@ class OrderBookRenderer:
             color = QColor("#4b4b4b")
 
         self._tint_row(row_idx, color)
-        QTimer.singleShot(ms, lambda: self._restore_row(row_idx))
+        QTimer.singleShot(ms, self._restore_all)
 
     # -------------------------------------------------
     # Row render
     # -------------------------------------------------
     def _render_row(self, r: int, row: OrderBookRow, max_qty: int):
-        # base background
+        # -----------------
+        # Background priority
+        # -----------------
         base_bg = self.bg_default
+
         if row.is_center:
             base_bg = self.bg_center
+
         if row.is_ls_price:
-            base_bg = self.bg_ls  # LS 기준선 우선
+            base_bg = self.bg_ls
+
+        # TP/SL은 "표식" 개념 → 연하게 덮기
+        if row.is_tp:
+            base_bg = self.tp_bg
+        elif row.is_sl:
+            base_bg = self.sl_bg
 
         self._paint_row_bg(r, base_bg)
 
+        # -----------------
         # PRICE
+        # -----------------
         price_it = self._get_item(r, self.COL_PRICE)
-        price_it.setText(f"{row.price:,.2f}")
-        price_it.setFont(self.font_price)
-        price_it.setForeground(self.fg_ls if row.is_ls_price else self.fg_normal)
 
-        # ASK/BID values
+        price_text = f"{row.price:,.2f}"
+        tag = ""
+
+        if row.is_tp:
+            tag = "TP"
+            price_it.setForeground(self.tp_line)
+        elif row.is_sl:
+            tag = "SL"
+            price_it.setForeground(self.sl_line)
+        else:
+            price_it.setForeground(
+                self.fg_ls if row.is_ls_price else self.fg_normal
+            )
+
+        if tag:
+            price_text = f"{price_text}  {tag}"
+
+        price_it.setText(price_text)
+        price_it.setFont(self.font_price)
+
+        # -----------------
+        # ASK / BID
+        # -----------------
         self._set_text(r, self.COL_SELL_QTY, "" if row.ask_qty <= 0 else str(row.ask_qty))
         self._set_text(r, self.COL_SELL_CNT, "" if row.ask_cnt <= 0 else str(row.ask_cnt))
 
@@ -154,27 +176,27 @@ class OrderBookRenderer:
         self._set_text(r, self.COL_BUY_CNT, "" if row.bid_cnt <= 0 else str(row.bid_cnt))
 
         # -----------------
-        # MY ORDERS (우선 적용)
+        # MY ORDERS (🔥 최우선)
         # -----------------
         if row.my_sell_cnt > 0:
             it = self._get_item(r, self.COL_SELL_CNT)
             it.setText(str(row.my_sell_cnt))
-            # it.setForeground(self.fg_my)
-            # it.setBackground(QBrush(QColor(231, 76, 60, 90)))
-            # price_it.setForeground(self.fg_my)
+            it.setForeground(QColor("#ffd54f"))  # 노란색
+            it.setFont(self.font_tag)
 
         if row.my_buy_cnt > 0:
             it = self._get_item(r, self.COL_BUY_CNT)
             it.setText(str(row.my_buy_cnt))
-            # it.setForeground(self.fg_my)
-            # it.setBackground(QBrush(QColor(46, 204, 113, 90)))
-            # price_it.setForeground(self.fg_my)
+            it.setForeground(QColor("#ffd54f"))
+            it.setFont(self.font_tag)
 
-        # Depth shading (qty 컬럼만)
+        # -----------------
+        # Depth shading
+        # -----------------
         self._shade_qty(r, self.COL_SELL_QTY, row.ask_qty, max_qty, self.ask_base, base_bg)
         self._shade_qty(r, self.COL_BUY_QTY, row.bid_qty, max_qty, self.bid_base, base_bg)
 
-        # MIT/매도/매수는 아직 비움
+        # Empty columns
         self._set_text(r, self.COL_MIT_SELL, "")
         self._set_text(r, self.COL_SELL, "")
         self._set_text(r, self.COL_BUY, "")
@@ -183,6 +205,10 @@ class OrderBookRenderer:
     # -------------------------------------------------
     # Helpers
     # -------------------------------------------------
+    def _restore_all(self):
+        if self._last_rows:
+            self.render(self._last_rows)
+
     def _get_item(self, r: int, c: int) -> QTableWidgetItem:
         it = self.table.item(r, c)
         if it is None:
@@ -195,8 +221,6 @@ class OrderBookRenderer:
         it = self._get_item(r, c)
         it.setText(text)
         it.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        # 기본 글자색 리셋(내 주문에서 다시 덮어씀)
-        # it.setForeground(self.fg_normal)
 
     def _paint_row_bg(self, r: int, color: QColor):
         for c in range(self.table.columnCount()):
@@ -219,12 +243,3 @@ class OrderBookRenderer:
             it = self.table.item(row_idx, c)
             if it:
                 it.setBackground(QBrush(color))
-
-    def _restore_row(self, row_idx: int):
-        # 전체 재렌더 없이 "해당 row만" 원복하려면 현재 rows 정보가 필요하지만,
-        # 여기서는 안전하게 현재 화면 기준으로만 복구: 가격 칼럼 기반으로 기본색으로 되돌림
-        # (정확한 원복은 위젯에서 renderer.render(engine.rows)로 한 번 더 호출해도 됨)
-        for c in range(self.table.columnCount()):
-            it = self.table.item(row_idx, c)
-            if it:
-                it.setBackground(QBrush(self.bg_default))
