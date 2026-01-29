@@ -113,14 +113,36 @@ class LSWatchListModel(QAbstractTableModel):
 
     # ---- future: price update hook ----
     def update_price(self, symbol: str, price: float, change: float):
+        """
+        Watchlist price update (UI only)
+
+        :param symbol: 심볼 (BTCUSDT, HSIF26 ...)
+        :param price: 현재가
+        :param change: 이전 대비 변화값 (diff)
+        """
         if symbol not in self._symbol_index:
+            return
+
+        # 방어 코드
+        try:
+            price = float(price)
+            change = float(change)
+        except (TypeError, ValueError):
             return
 
         row = self._symbol_index[symbol]
         sym = self.symbols[row]
+
+        # 값이 동일하면 UI 갱신 불필요
+        if sym.price == price and sym.change == change:
+            return
+
         sym.price = price
         sym.change = change
 
         left = self.index(row, self.COL_PRICE)
         right = self.index(row, self.COL_CHANGE)
+
+        # 최소 범위만 갱신
         self.dataChanged.emit(left, right)
+

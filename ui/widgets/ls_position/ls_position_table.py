@@ -77,22 +77,40 @@ class LSPositionsTable(QTableWidget):
     # 최초 Row 생성
     # ----------------------------------------------------------
     def _draw_row(self, r, row):
-        print(row)
         symbol = row.get("symbol", "")
         fmt_value = DISPLAY_FORMAT.get(symbol, DEFAULT_FMT)
 
         self._set_item(r, 0, symbol)
 
+        # -------------------------
+        # 포지션 방향 (용어 통일)
+        # -------------------------
         side = row.get("side", "")
-        side_kr = "롱" if side == "LONG" else "숏" if side == "SHORT" else ""
+        if side == "LONG":
+            side_kr = "매수"
+        elif side == "SHORT":
+            side_kr = "매도"
+        else:
+            side_kr = ""
+
         self._set_item(r, 1, side_kr)
 
+        # -------------------------
+        # 수량 / 평균단가 / 손익
+        # -------------------------
         self._set_item(r, 2, fmt(row.get("qty"), fmt_value["qty"]))
-        self._set_item(r, 3, fmt(row.get("avg_price"), fmt_value["price"]))  # ✅ 핵심
+        self._set_item(r, 3, fmt(row.get("avg_price"), fmt_value["price"]))
         self._set_item(r, 4, fmt(row.get("unrealized_pnl"), fmt_value["pnl"]))
 
+        # -------------------------
+        # 강제청산가
+        # -------------------------
         liq = row.get("liquidation_price")
-        self._set_item(r, 5, "-" if liq is None else fmt(liq, fmt_value["price"]))
+        self._set_item(
+            r,
+            5,
+            "-" if liq is None else fmt(liq, fmt_value["price"])
+        )
 
         self._apply_style(r, row)
 

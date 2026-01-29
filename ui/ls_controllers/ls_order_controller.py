@@ -18,9 +18,10 @@ class OrderController:
     - 체결 = 다른 파이프라인
     """
 
-    def __init__(self, main_window, api):
+    def __init__(self, main_window, api, account_api):
         self.main = main_window
         self.api = api
+        self.account_api = account_api  # 🔥 추가
 
         # ✅ 오더북 표시 전용 로컬 주문 저장소
         # key = (symbol, price, side)
@@ -92,6 +93,20 @@ class OrderController:
             )
         )
 
+    def place_market_close(self, symbol: str, side: str, qty: int):
+        account_id = self.main.account_id
+        if not symbol or not account_id or qty <= 0:
+            return
+
+        self.main.enqueue_async(
+            self._create_market_order(
+                symbol=symbol,
+                side=side,  # ✅ 인자 그대로 사용
+                qty=qty,
+                account_id=account_id,
+            )
+        )
+
     async def _create_order(
             self,
             symbol: str,
@@ -153,33 +168,35 @@ class OrderController:
             side: str,
             qty: int,
             account_id: int,
+            source: str = "ORDERBOOK",
     ):
-        """
-        MARKET 주문 생성 (price는 백엔드에서 결정)
-        """
         payload = {
             "account_id": int(account_id),
             "symbol": symbol,
             "side": side,
             "order_type": "MARKET",
             "qty": qty,
-            "request_price": None,  # ✅ 명시
-            "source": "ORDERBOOK",
+            "request_price": None,
+            "source": source,
         }
+
         try:
             await self.api.post("/ls/futures/orders", json=payload)
-        except requests.HTTPError as e:
-            print("HTTP STATUS:", e.response.status_code)
-            print("HTTP BODY:", e.response.text)  # 여기에 Pydantic validation detail이 뜸
-            raise
 
-        # 주문 후 DB 기준 refresh
-        self.main.enqueue_async(self.main.fetch_open_orders())
+            self.main.enqueue_async(self.main.fetch_open_orders)
 
-        self.main.safe_ui(
-            self.main.show_toast,
-            f"[시장가 주문] {symbol} {side} {qty}",
-        )
+            self.main.safe_ui(
+                self.main.show_toast,
+                f"[시장가 주문] {symbol} {side} {qty}",
+            )
+
+        except Exception as e:
+            print("[OrderController] MARKET order failed:", e)
+
+            self.main.safe_ui(
+                self.main.show_toast,
+                "❌ 시장가 주문 실패",
+            )
 
     # =====================================================
     # Local my_orders 관리 (OrderBook 전용)

@@ -1,8 +1,8 @@
 # ui/main_window.py
 import asyncio
 
-from PyQt6.QtGui import QAction, QKeySequence
-from PyQt6.QtWidgets import QMainWindow, QSizePolicy, QWidget, QHBoxLayout, QPushButton
+from PyQt6.QtGui import QAction, QKeySequence, QShortcut
+from PyQt6.QtWidgets import QMainWindow, QSizePolicy, QWidget, QHBoxLayout, QPushButton, QMessageBox
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, Qt
 
@@ -15,6 +15,7 @@ from api.ls.ls_order_api import LSOrderApi
 from api.position_api import PositionApi
 from api.order_api import OrderApi
 from api.favorite_api import FavoriteApiClient
+from core import global_rates
 
 # -------------------------
 # Services / Store
@@ -31,6 +32,7 @@ from ui.controllers.price_controller import PriceController
 from ui.controllers.background_controller import BackgroundController
 from ui.controllers.time_sales_controller import TimeSalesController
 from ui.controllers.execution_strength import ExecutionStrength
+from ui.ls_controllers.ls_orderbook_controller import OrderBookController
 from ui.ls_controllers.ls_reservation_controller import ReservationController
 from ui.ls_controllers.ls_watchlist_controller import LSWatchListController
 from ui.ls_controllers.ls_order_controller import OrderController
@@ -42,7 +44,6 @@ from ui.settings.trade_setting import UserTradeSetting
 from ui.widgets.favorite_bar import FavoriteBar
 from ui.widgets.ls_position.ls_position_protection_panel import LSPositionProtectionPanel
 from ui.widgets.ls_reservation.reservation_widget import ReservationWidget
-from ui.widgets.order_control_bar import OrderControlBar
 from ui.widgets.ls_orderbook.ls_orderbook_widget import LSOrderBookWidget
 from ui.widgets.ls_position.ls_position_table import LSPositionsTable
 from ui.widgets.ls_balance.ls_balance_table import LSBalanceTable
@@ -56,6 +57,7 @@ from ui.utils.formatter import fmt_money, fmt_pnl, fmt_rate
 from ui.workers.execution_stream_worker import ExecutionStreamWorker
 
 from config.settings import LS_BASE_URL
+from ui.workers.price_stream_worker import PriceStreamWorker
 
 FIXED_WIDTH = 1490
 PRICE_COL = 4
@@ -86,6 +88,7 @@ class MainWindow(QMainWindow):
         self.current_symbol = "HSIF26"
         self.running = True
         self._fetching_open_orders = False
+        self.selected_ls_row = None
 
         self.my_order_store = MyOrderStore()
         self.exec_strength = ExecutionStrength(window_sec=5)
@@ -109,15 +112,18 @@ class MainWindow(QMainWindow):
         # UI Components
         # -------------------------
         self._init_top_bar()
-        self.price_controller = PriceController(top_bar=self.topBar)
-
         self._init_orderbook()
-        self.order_controller = OrderController(main_window=self, api=self.ls_api)
-
+        self.order_controller = OrderController(main_window=self, api=self.ls_api, account_api=self.ls_account_api)
         self._init_watchlist()
         self._init_bottom_tabs()
         self._init_right_panel()
 
+        self.orderbook_controller = OrderBookController(
+            api_client=self.ls_api,
+            view=self.orderbook,
+        )
+
+        self.price_controller = PriceController(top_bar=self.topBar, watchlist_controller=self.ls_watchlist_controller)
         self.bg_controller = BackgroundController(self, interval=0.5)
 
         self.orderbook.priceClicked.connect(
@@ -153,6 +159,8 @@ class MainWindow(QMainWindow):
         # -------------------------
         # Initial Load
         # -------------------------
+        self.enqueue_async(self.load_fx_rates())
+
         self.enqueue_async(self.load_ls_watchlist())
 
         self.execution_worker = ExecutionStreamWorker(
@@ -164,6 +172,12 @@ class MainWindow(QMainWindow):
         )
 
         self.execution_worker.start()  # ← 이게 없으면 100% 안 뜸
+
+        self.price_worker = PriceStreamWorker(LS_BASE_URL)
+        self.price_worker.price_received.connect(
+            self.ls_watchlist_controller.on_price_event
+        )
+        self.price_worker.start()
 
         self.orderbookControlLayout.setContentsMargins(8, 6, 8, 6)
 
@@ -188,7 +202,11 @@ class MainWindow(QMainWindow):
         act_buy.triggered.connect(lambda: self._place_market("BUY"))
         self.addAction(act_buy)
 
-        self._bind_qty_buttons()
+        self.btnCloseSymbol.clicked.connect(self.on_close_current_symbol)
+        QShortcut(QKeySequence("F8"), self, self.on_close_current_symbol)
+
+        self.btnCloseAll.clicked.connect(self.on_close_all_positions)
+        QShortcut(QKeySequence("F5"), self, self.on_close_all_positions)
 
     def on_tab_changed(self, idx):
         print('tabName : ' + self.bottomTabs.widget(idx).objectName())
@@ -262,14 +280,6 @@ class MainWindow(QMainWindow):
             self.rightPanelLayout.indexOf(self.tableWatchlist),
             self.symbolSummary,
         )
-
-    def _bind_qty_buttons(self):
-        self.btnQty1.clicked.connect(lambda: self.set_qty(1))
-        self.btnQty2.clicked.connect(lambda: self.set_qty(2))
-        self.btnQty3.clicked.connect(lambda: self.set_qty(3))
-        self.btnQty4.clicked.connect(lambda: self.set_qty(4))
-        self.btnQty5.clicked.connect(lambda: self.set_qty(5))
-        self.btnQty10.clicked.connect(lambda: self.set_qty(10))
 
     def set_qty(self, value: int):
         self.spinQty.setValue(value)
@@ -372,23 +382,84 @@ class MainWindow(QMainWindow):
 
     async def change_symbol(self, symbol: str, tick_size: float | None = None):
         symbol = symbol.upper()
-        if symbol == self.current_symbol:
-            return
 
         self.current_symbol = symbol
+
+        # OrderBook View (로컬 UI)
         self.orderbook.set_symbol(symbol, tick_size=tick_size)
+
+        # Price
         self.price_controller.set_symbol(symbol)
         self.price_controller.reset()
 
-        # if self.trade_ws:
-        #     await self.trade_ws.stop()
+        # 🔥 OrderBook WS / REST 연동 (반드시 await)
+        await self.orderbook_controller.set_symbol(symbol)
 
+        # Time & Sales
         self.time_sales_controller.clear()
-        # self.trade_ws = TradesWSClient(symbol=symbol, callback=self._on_trade_ws)
-        # await self.trade_ws.start()
 
+        # 요약 패널
         if hasattr(self, "selected_ls_row"):
             self.symbolSummary.update_ls_symbol(self.selected_ls_row)
+
+    def on_close_current_symbol(self):
+        self.enqueue_async(self._close_current_symbol_worker())
+
+    def on_close_all_positions(self):
+        self.enqueue_async(self._close_all_positions_worker())
+
+    async def _close_current_symbol_worker(self):
+        symbol = self.current_symbol
+        if not symbol:
+            return
+
+        pos = await self.ls_account_api.get_position(self.account_id, symbol)
+        if not pos:
+            QMessageBox.information(self, "알림", "청산할 포지션이 없습니다.")
+            return
+
+        qty_raw = pos.get("qty", 0)
+        if not qty_raw:
+            QMessageBox.information(self, "알림", "청산할 포지션이 없습니다.")
+            return
+
+        qty = abs(qty_raw)
+        close_side = "SELL" if qty_raw > 0 else "BUY"  # ✅ 부호로 결정
+
+        self.order_controller.place_market_close(
+            symbol=symbol,
+            side=close_side,
+            qty=qty,
+        )
+
+    async def _close_all_positions_worker(self):
+        positions = await self.ls_account_api.get_positions(self.account_id)
+
+        if not positions:
+            QMessageBox.information(self, "알림", "청산할 포지션이 없습니다.")
+            return
+
+        for pos in positions:
+            qty_raw = pos.get("qty", 0)
+            if qty_raw == 0:
+                continue
+
+            symbol = pos["symbol"]
+            qty = abs(qty_raw)
+            side = "SELL" if qty_raw > 0 else "BUY"
+
+            # 🔥 시장가 청산
+            self.order_controller.place_market_close(
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                # source="UI:ALL_CLOSE"
+            )
+
+        self.safe_ui(
+            self.show_toast,
+            "🚨 전종목 청산 요청 완료"
+        )
 
     # =====================================================
     # FAVORITE
@@ -653,12 +724,13 @@ class MainWindow(QMainWindow):
 
     def on_execution_received(self, event: dict):
         exec_type = event.get("exec_type")
-
         if exec_type == "TRADE":
             self.time_sales_controller.on_trade(event)
         elif exec_type == "STATUS":
             self.reservation_controller.on_status_event(event)
 
+    async def load_fx_rates(self):
+        global_rates.FX_RATES = await self.api.get("/ls/futures/fx/rates")
 
     # =====================================================
     # FETCHERS

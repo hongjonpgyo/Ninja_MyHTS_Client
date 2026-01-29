@@ -1,6 +1,8 @@
 from typing import List, Optional
 
-from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
+from PyQt6.QtWidgets import (
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
+)
 from PyQt6.QtGui import QColor, QBrush, QFont
 from PyQt6.QtCore import Qt, QTimer
 
@@ -50,12 +52,11 @@ class OrderBookRenderer:
         self.font_tag.setPointSize(9)
         self.font_tag.setBold(True)
 
-        # 마지막 rows 캐시 (pulse/flash 복구용)
         self._last_rows: List[OrderBookRow] = []
 
-    # -------------------------------------------------
+    # =================================================
     # Table setup
-    # -------------------------------------------------
+    # =================================================
     def configure_table(self, total_rows: int):
         self.table.setRowCount(total_rows)
         self.table.setColumnCount(9)
@@ -85,13 +86,13 @@ class OrderBookRenderer:
                 it.setBackground(QBrush(self.bg_default))
                 it.setForeground(self.fg_normal)
 
-    # -------------------------------------------------
+    # =================================================
     # Render
-    # -------------------------------------------------
+    # =================================================
     def render(self, rows: List[OrderBookRow]):
         self._last_rows = rows
-
         self.table.setRowCount(len(rows))
+
         if not rows:
             return
 
@@ -100,9 +101,9 @@ class OrderBookRenderer:
         for r, row in enumerate(rows):
             self._render_row(r, row, max_qty)
 
-    # -------------------------------------------------
+    # =================================================
     # FX
-    # -------------------------------------------------
+    # =================================================
     def pulse_center(self, row_idx: int, ms: int = 140):
         self._tint_row(row_idx, QColor("#355f7a"))
         QTimer.singleShot(ms, self._restore_all)
@@ -118,50 +119,40 @@ class OrderBookRenderer:
         self._tint_row(row_idx, color)
         QTimer.singleShot(ms, self._restore_all)
 
-    # -------------------------------------------------
+    # =================================================
     # Row render
-    # -------------------------------------------------
+    # =================================================
     def _render_row(self, r: int, row: OrderBookRow, max_qty: int):
         # -----------------
         # Background priority
         # -----------------
-        base_bg = self.bg_default
+        bg = self.bg_default
 
         if row.is_center:
-            base_bg = self.bg_center
-
+            bg = self.bg_center
         if row.is_ls_price:
-            base_bg = self.bg_ls
-
-        # TP/SL은 "표식" 개념 → 연하게 덮기
+            bg = self.bg_ls
         if row.is_tp:
-            base_bg = self.tp_bg
+            bg = self.tp_bg
         elif row.is_sl:
-            base_bg = self.sl_bg
+            bg = self.sl_bg
 
-        self._paint_row_bg(r, base_bg)
+        self._paint_row_bg(r, bg)
 
         # -----------------
         # PRICE
         # -----------------
         price_it = self._get_item(r, self.COL_PRICE)
-
         price_text = f"{row.price:,.2f}"
-        tag = ""
 
         if row.is_tp:
-            tag = "TP"
             price_it.setForeground(self.tp_line)
+            price_text += "  TP"
         elif row.is_sl:
-            tag = "SL"
             price_it.setForeground(self.sl_line)
+            price_text += "  SL"
         else:
-            price_it.setForeground(
-                self.fg_ls if row.is_ls_price else self.fg_normal
-            )
-
-        if tag:
-            price_text = f"{price_text}  {tag}"
+            price_it.setForeground(self.fg_ls if row.is_ls_price else self.fg_normal)
 
         price_it.setText(price_text)
         price_it.setFont(self.font_price)
@@ -171,40 +162,54 @@ class OrderBookRenderer:
         # -----------------
         self._set_text(r, self.COL_SELL_QTY, "" if row.ask_qty <= 0 else str(row.ask_qty))
         self._set_text(r, self.COL_SELL_CNT, "" if row.ask_cnt <= 0 else str(row.ask_cnt))
-
         self._set_text(r, self.COL_BUY_QTY, "" if row.bid_qty <= 0 else str(row.bid_qty))
         self._set_text(r, self.COL_BUY_CNT, "" if row.bid_cnt <= 0 else str(row.bid_cnt))
 
         # -----------------
-        # MY ORDERS (🔥 최우선)
+        # MY LIMIT ORDERS
         # -----------------
+        self._set_text(r, self.COL_SELL, "")
+        self._set_text(r, self.COL_BUY, "")
+
         if row.my_sell_cnt > 0:
-            it = self._get_item(r, self.COL_SELL_CNT)
+            it = self._get_item(r, self.COL_SELL)
             it.setText(str(row.my_sell_cnt))
-            it.setForeground(QColor("#ffd54f"))  # 노란색
+            it.setForeground(QColor("#ffd54f"))
             it.setFont(self.font_tag)
 
         if row.my_buy_cnt > 0:
-            it = self._get_item(r, self.COL_BUY_CNT)
+            it = self._get_item(r, self.COL_BUY)
             it.setText(str(row.my_buy_cnt))
             it.setForeground(QColor("#ffd54f"))
             it.setFont(self.font_tag)
 
         # -----------------
-        # Depth shading
+        # MY MIT ORDERS (TP / SL)
         # -----------------
-        self._shade_qty(r, self.COL_SELL_QTY, row.ask_qty, max_qty, self.ask_base, base_bg)
-        self._shade_qty(r, self.COL_BUY_QTY, row.bid_qty, max_qty, self.bid_base, base_bg)
-
-        # Empty columns
         self._set_text(r, self.COL_MIT_SELL, "")
-        self._set_text(r, self.COL_SELL, "")
-        self._set_text(r, self.COL_BUY, "")
         self._set_text(r, self.COL_MIT_BUY, "")
 
-    # -------------------------------------------------
+        if row.my_mit_sell > 0:
+            it = self._get_item(r, self.COL_MIT_SELL)
+            it.setText(f"●{row.my_mit_sell}")
+            it.setForeground(QColor("#ff7675"))
+            it.setFont(self.font_tag)
+
+        if row.my_mit_buy > 0:
+            it = self._get_item(r, self.COL_MIT_BUY)
+            it.setText(f"●{row.my_mit_buy}")
+            it.setForeground(QColor("#74b9ff"))
+            it.setFont(self.font_tag)
+
+        # -----------------
+        # Depth shading
+        # -----------------
+        self._shade_qty(r, self.COL_SELL_QTY, row.ask_qty, max_qty, self.ask_base, bg)
+        self._shade_qty(r, self.COL_BUY_QTY, row.bid_qty, max_qty, self.bid_base, bg)
+
+    # =================================================
     # Helpers
-    # -------------------------------------------------
+    # =================================================
     def _restore_all(self):
         if self._last_rows:
             self.render(self._last_rows)
@@ -224,19 +229,26 @@ class OrderBookRenderer:
 
     def _paint_row_bg(self, r: int, color: QColor):
         for c in range(self.table.columnCount()):
-            it = self._get_item(r, c)
-            it.setBackground(QBrush(color))
+            self._get_item(r, c).setBackground(QBrush(color))
 
-    def _shade_qty(self, r: int, c: int, qty: int, max_qty: int, base: QColor, base_bg: QColor):
+    def _shade_qty(
+        self,
+        r: int,
+        c: int,
+        qty: int,
+        max_qty: int,
+        base: QColor,
+        base_bg: QColor,
+    ):
         it = self._get_item(r, c)
+
         if qty <= 0 or max_qty <= 0:
             it.setBackground(QBrush(base_bg))
             return
 
         ratio = min(qty / max_qty, 1.0)
         alpha = int(30 + ratio * 120)
-        shaded = QColor(base.red(), base.green(), base.blue(), alpha)
-        it.setBackground(QBrush(shaded))
+        it.setBackground(QBrush(QColor(base.red(), base.green(), base.blue(), alpha)))
 
     def _tint_row(self, row_idx: int, color: QColor):
         for c in range(self.table.columnCount()):

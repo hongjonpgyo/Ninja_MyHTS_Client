@@ -83,3 +83,13 @@ def fmt_rate(v):
 def fmt_pnl(v):
     return "" if v is None else f"{v:,.0f}"
 
+def fmt_fx(rate: float | None, currency: str) -> str:
+    if rate is None:
+        return "-"
+
+    # 소수점 처리: 원화 기준이므로 기본은 정수
+    value = int(round(rate))
+
+    return f"{value:,}원({currency})"
+
+

@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont
+import core.global_rates as global_rates
 
 class SymbolSummaryWidget(QFrame):
     def __init__(self, parent=None):
@@ -47,11 +48,31 @@ class SymbolSummaryWidget(QFrame):
         self.labels["고가"].setText(f"{row.get('high_p', '--')}")
         self.labels["저가"].setText(f"{row.get('low_p', '--')}")
         self.labels["틱가치"].setText(f"{row.get('tick_value', '--')}")
-        self.labels["환율"].setText(row.get("crncy_cd", "--"))
+        # 🔥 환율: 글로벌 캐시 기준
+        currency = row.get("crncy_cd")
+        self.labels["환율"].setText(
+            self._fmt_fx(currency)
+        )
+        #
+        # self.labels["환율"].setText(row.get("crncy_cd", "--"))
 
         self.labels["만기일"].setText(row.get("mrtr_dt", "--"))
         self.labels["잔존일수"].setText(
             f"{row['remain_days']}일" if row.get("remain_days") is not None else "--"
         )
+
+    @staticmethod
+    def _fmt_fx(currency: str | None) -> str:
+        if not currency:
+            return "--"
+        print("currency")
+        print(currency)
+        rate = global_rates.FX_RATES.get(currency)
+        print("FX_REATES END")
+
+        if rate is None:
+            return f"--({currency})"
+
+        return f"{int(round(rate)):,}원({currency})"
 
 

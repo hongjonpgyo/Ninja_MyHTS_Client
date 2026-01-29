@@ -1,4 +1,3 @@
-# services/account_ws_client.py
 import asyncio
 import json
 import ssl

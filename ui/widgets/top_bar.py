@@ -1,3 +1,5 @@
+import webbrowser
+
 from config.settings import DEFAULT_SYMBOLS
 from PyQt6.QtCore import Qt, QTimer
 from datetime import datetime
@@ -9,8 +11,6 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont
-
-from ui.widgets.chart_popup import ChartPopup
 from ui.widgets.preferences_dialog import PreferencesDialog
 
 
@@ -308,18 +308,24 @@ class TopBarWidget(QFrame):
 
     def on_open_chart(self):
         symbol = self.main_window.current_symbol  # 예: "BTCUSDT"
+        if symbol:
+            self.open_tradingview(symbol)
 
-        self.chart_popup = ChartPopup(symbol, self)
-        self.chart_popup.show()
+    def open_tradingview(self, symbol: str):
+        url = f"https://www.tradingview.com/chart/?symbol={symbol}"
+        webbrowser.open(url)
 
-        # 테스트용 더미 캔들
-        candles = [
-            {"time": "2024-12-01", "open": 88500, "high": 89000, "low": 88000, "close": 88800},
-            {"time": "2024-12-02", "open": 88800, "high": 89500, "low": 88400, "close": 89200},
-            {"time": "2024-12-03", "open": 89200, "high": 90000, "low": 89000, "close": 89800},
-        ]
-
-        self.chart_popup.set_candles(candles)
+        # self.chart_popup = ChartPopup(symbol, self)
+        # self.chart_popup.show()
+        #
+        # # 테스트용 더미 캔들
+        # candles = [
+        #     {"time": "2024-12-01", "open": 88500, "high": 89000, "low": 88000, "close": 88800},
+        #     {"time": "2024-12-02", "open": 88800, "high": 89500, "low": 88400, "close": 89200},
+        #     {"time": "2024-12-03", "open": 89200, "high": 90000, "low": 89000, "close": 89800},
+        # ]
+        #
+        # self.chart_popup.set_candles(candles)
 
     def logout(self):
         self.main_window.logout()

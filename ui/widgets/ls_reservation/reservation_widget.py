@@ -218,6 +218,7 @@ class ReservationWidget(QWidget):
                 self.table.setCellWidget(row, self.COL_CANCEL, None)
             break
 
+    @staticmethod
     def resolve_reservation_type(row: dict) -> str:
         if row.get("protection_id") is not None:
             if row.get("protection_type") == "TP":

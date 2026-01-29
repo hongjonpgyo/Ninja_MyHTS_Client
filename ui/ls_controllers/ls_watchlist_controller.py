@@ -1,3 +1,5 @@
+import asyncio
+
 from PyQt6.QtWidgets import QTableWidgetItem
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont
@@ -54,8 +56,12 @@ class LSWatchListController:
     # -------------------------------------------------
     def load_rows(self, rows: list[dict]):
         self.table.setRowCount(0)
+        self._symbol_row_map = {}  # 🔥 핵심
+
         for row in rows:
+            r = self.table.rowCount()
             self._append_row(row)
+            self._symbol_row_map[row["symbol"]] = r
 
     # -------------------------------------------------
     # Internal
@@ -75,7 +81,7 @@ class LSWatchListController:
             self.table.setItem(r, col, item)
 
         symbol = row.get("symbol", "")
-        trd_p = row.get("trd_p")
+        trd_p = row.get("last_price")
         diff = row.get("diff")
 
         # -----------------------
@@ -159,6 +165,58 @@ class LSWatchListController:
             return
 
         row_data = self.table.property(f"_row_{row}")
-
         # 🔥 symbol + 원본 row dict 전달
         self.on_symbol_click(symbol, row_data)
+
+    def on_price_event(self, event: dict):
+        print('on_price_event start~')
+        symbol = event.get("symbol")
+        price = event.get("price")
+        diff = event.get("diff")
+
+        if symbol not in self._symbol_row_map:
+            return
+
+        row = self._symbol_row_map[symbol]
+
+        self._update_price_cell(row, price)
+
+    def update_price(self, symbol: str, price: float, diff: float):
+        """
+        PriceController 에서 호출하는 표준 인터페이스
+        """
+        if symbol not in self._symbol_row_map:
+            return
+
+        row = self._symbol_row_map[symbol]
+        self._update_price_cell(row, price)
+
+    def _update_price_cell(self, row: int, price: float):
+        row_data = self.table.property(f"_row_{row}")
+        prev_close = row_data.get("close_p")
+
+        if not prev_close:
+            return
+
+        day_diff = price - prev_close
+        day_rate = (day_diff / prev_close) * 100
+
+        if day_rate > 0:
+            color = QColor("#e74c3c")
+            arrow = "▲"
+        elif day_rate < 0:
+            color = QColor("#3498db")
+            arrow = "▼"
+        else:
+            color = QColor("#aaaaaa")
+            arrow = "―"
+
+        self.table.item(row, self.COL_PRICE).setText(f"{price:,.2f}")
+        self.table.item(row, self.COL_PRICE).setForeground(color)
+
+        self.table.item(row, self.COL_DIFF).setText(
+            f"{arrow} {abs(day_rate):.2f}%"
+        )
+        self.table.item(row, self.COL_DIFF).setForeground(color)
+
+

@@ -162,3 +162,13 @@ class APIClient:
             "/ls/futures/protections",
             params=params,
         )
+
+    # -------------------------
+    # 🔥 OrderBook 심볼 변경
+    # -------------------------
+    async def set_orderbook_symbol(self, symbol: str):
+        payload = {"symbol": symbol}
+        return await self.post(
+            "/ls/futures/orderbook/symbol",
+            json=payload,
+        )

@@ -1,8 +1,8 @@
 from typing import Dict, List, Optional
 
 from PyQt6.QtWidgets import QWidget, QTableWidget
-from PyQt6.QtCore import QTimer, QPropertyAnimation, QEasingCurve, pyqtSignal
-from PyQt6.QtGui import QColor
+from PyQt6.QtCore import QTimer, QPropertyAnimation, QEasingCurve, pyqtSignal, Qt
+from PyQt6.QtGui import QColor, QBrush
 
 from services.ls.ls_orderbook_engine import OrderBookEngine, OrderBookRow
 from ui.widgets.ls_orderbook.ls_orderbook_renderer import OrderBookRenderer
@@ -374,6 +374,24 @@ class LSOrderBookWidget(QWidget):
         # ❌ 나머지 모든 컬럼
         # -------------------------
         return
+
+    def clear(self):
+        # 엔진 상태 초기화
+        self.engine.clear()
+
+        # 화면 비우기
+        self.renderer.render([])
+
+        # 내부 상태 초기화
+        self.center_price = None
+        self._prev_center_price = None
+        self._last_bids = []
+        self._last_asks = []
+        self._last_my_orders = {}
+
+        self.table.viewport().update()
+
+
 
 
 
