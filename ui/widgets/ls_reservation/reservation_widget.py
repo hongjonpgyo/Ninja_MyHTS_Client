@@ -53,7 +53,7 @@ class ReservationWidget(QWidget):
         t = self.table
         t.setColumnCount(9)
         t.setHorizontalHeaderLabels([
-            "시간", "종목", "구분", "수량", "조건", "주문", "상태", "유형", "취소"
+            "예약일시", "종목", "구분", "수량", "조건", "주문", "상태", "유형", "취소"
         ])
 
         t.verticalHeader().setVisible(False)
@@ -125,12 +125,15 @@ class ReservationWidget(QWidget):
         if isinstance(created_at, str):
             try:
                 dt = datetime.fromisoformat(created_at.replace("Z", ""))
-                text = dt.strftime("%H:%M:%S")
             except Exception:
-                text = "--:--:--"
+                return self._center_item("--")
+        elif isinstance(created_at, datetime):
+            dt = created_at
         else:
-            text = created_at.strftime("%H:%M:%S")
+            return self._center_item("--")
 
+        # ✅ 일자 + 시간
+        text = dt.strftime("%m/%d %H:%M:%S")
         return self._center_item(text)
 
     def _type_item(self, r: dict):

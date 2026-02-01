@@ -9,68 +9,68 @@ class LSBalanceTable(QWidget):
         super().__init__(parent)
 
         self.setObjectName("LSBalanceTable")
-        self.setAutoFillBackground(True)
 
         # ===============================
         # Fonts
         # ===============================
-        self.font_label = QFont()
-        self.font_label.setPointSize(11)
+        self.font_key = QFont()
+        self.font_key.setPointSize(11)
 
         self.font_value = QFont()
         self.font_value.setPointSize(12)
         self.font_value.setBold(True)
 
+        self.font_pnl = QFont()
+        self.font_pnl.setPointSize(15)
+        self.font_pnl.setBold(True)
+
         # ===============================
         # Layout
         # ===============================
         layout = QGridLayout(self)
-        layout.setContentsMargins(12, 6, 12, 6)
-        layout.setHorizontalSpacing(24)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setHorizontalSpacing(28)
         layout.setVerticalSpacing(6)
 
         # ===============================
         # Widgets
         # ===============================
-        self.lblDeposit = QLabel("0")
-        self.lblAvailable = QLabel("0")
-        self.lblPnL = QLabel("0")
-        self.lblPnLRate = QLabel("0.00%")
-
-        # ===============================
-        # Apply styles
-        # ===============================
-        for lbl in (
-            self.lblDeposit,
-            self.lblAvailable,
-            self.lblPnL,
-            self.lblPnLRate,
-        ):
-            lbl.setFont(self.font_value)
-            lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            lbl.setStyleSheet("color:#e0e0e0;")
-
-        def title(text):
-            l = QLabel(text)
-            l.setFont(self.font_label)
-            l.setStyleSheet("color:#aaaaaa;")
-            l.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-            return l
+        self.lblDeposit = self._make_value()
+        self.lblAvailable = self._make_value()
+        self.lblPnL = self._make_value(font=self.font_pnl)
+        self.lblPnLRate = self._make_value()
 
         # ===============================
         # Grid
         # ===============================
-        layout.addWidget(title("예탁금"),        0, 0)
-        layout.addWidget(self.lblDeposit,        0, 1)
+        layout.addWidget(self._make_key("예탁금"),       0, 0)
+        layout.addWidget(self.lblDeposit,               0, 1)
 
-        layout.addWidget(title("가용예탁금"),    0, 2)
-        layout.addWidget(self.lblAvailable,      0, 3)
+        layout.addWidget(self._make_key("가용예탁금"),   0, 2)
+        layout.addWidget(self.lblAvailable,             0, 3)
 
-        layout.addWidget(title("평가손익"),      1, 0)
-        layout.addWidget(self.lblPnL,            1, 1)
+        layout.addWidget(self._make_key("평가손익"),     1, 0)
+        layout.addWidget(self.lblPnL,                   1, 1)
 
-        layout.addWidget(title("평가손익률"),    1, 2)
-        layout.addWidget(self.lblPnLRate,        1, 3)
+        layout.addWidget(self._make_key("평가손익률"),   1, 2)
+        layout.addWidget(self.lblPnLRate,               1, 3)
+
+    # ==================================================
+    # Widget factories
+    # ==================================================
+    def _make_key(self, text: str) -> QLabel:
+        lbl = QLabel(text)
+        lbl.setFont(self.font_key)
+        lbl.setStyleSheet("color:#9a9a9a;")
+        lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        return lbl
+
+    def _make_value(self, font: QFont | None = None) -> QLabel:
+        lbl = QLabel("0")
+        lbl.setFont(font or self.font_value)
+        lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        lbl.setStyleSheet("color:#e0e0e0;")
+        return lbl
 
     # ==================================================
     # Update
@@ -89,7 +89,12 @@ class LSBalanceTable(QWidget):
         self.lblPnL.setText(fmt_pnl(pnl))
         self.lblPnLRate.setText(fmt_rate(rate) + "%")
 
-        # 손익 컬러
+        self._apply_pnl_color(pnl)
+
+    # ==================================================
+    # Util
+    # ==================================================
+    def _apply_pnl_color(self, pnl: float):
         if pnl > 0:
             color = "#2ecc71"
         elif pnl < 0:

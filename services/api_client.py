@@ -101,7 +101,10 @@ class APIClient:
         return await self.post("/orders/limit", json=payload)
 
     async def get_executions(self, account_id: int):
-        return await self.get(f"/executions/my/{account_id}")
+        print(self._headers())
+        res = await self._client.get(f"/ls/futures/executions/my/{account_id}", headers=self._headers())
+        res.raise_for_status()
+        return res.json()
 
     # async def get_open_orders(self, account_id):
     #     return await self.get(f"/orders/open/{account_id}")

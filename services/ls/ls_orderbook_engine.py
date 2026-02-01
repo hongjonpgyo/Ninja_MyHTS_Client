@@ -114,15 +114,16 @@ class OrderBookEngine:
     # =================================================
     def apply_protections(self, protections: List[Dict]):
         """
-        protections = [
-          { "type": "TP", "price": 26850.0, "cnt": 1 },
-          { "type": "SL", "price": 26600.0, "cnt": 2 },
-        ]
+        다양한 형태를 허용:
+        1) { "type": "TP|SL", "price": 26850.0, "cnt": 1 }
+        2) DB row 형태:
+           { "protection_type": "...", "trigger_price": ..., "qty": ..., "close_side": "BUY|SELL", ... }
+           { "type": "...", "trigger_price": ..., "qty": ... } 등
         """
-        if not self.rows:
-            return
+        # if not self.rows:
+        #     return
 
-        # 🔥 항상 초기화 (중복 방지)
+        # ✅ 항상 초기화 (중복/잔상 방지)
         for r in self.rows:
             r.is_tp = False
             r.is_sl = False
@@ -131,15 +132,74 @@ class OrderBookEngine:
 
         tp_map: Dict[float, int] = {}
         sl_map: Dict[float, int] = {}
+        mit_sell_map: Dict[float, int] = {}
+        mit_buy_map: Dict[float, int] = {}
 
-        for p in protections:
-            price = self.normalize_price(float(p["price"]))
-            cnt = int(p.get("cnt", 1))
+        for raw in protections or []:
+            ptype = (
+                    raw.get("type")
+                    or raw.get("protection_type")
+                    or raw.get("kind")
+                    or ""
+            )
+            ptype = str(ptype).upper().strip()
 
-            if p["type"] == "TP":
+            # ✅ TP/SL 정규화 (여기 아주 중요)
+            if ptype in ("TAKE_PROFIT", "TP_PROFIT", "PROFIT", "익절"):
+                ptype = "TP"
+            if ptype in ("STOP_LOSS", "SL_LOSS", "LOSS", "손절"):
+                ptype = "SL"
+
+            # 가격 키 후보들
+            price_val = (
+                raw.get("price")
+                if raw.get("price") is not None
+                else raw.get("trigger_price")
+                if raw.get("trigger_price") is not None
+                else raw.get("request_price")
+            )
+            if price_val in (None, "", " "):
+                continue
+
+            try:
+                price = self.normalize_price(float(price_val))
+            except Exception:
+                continue
+
+            # 수량/건수 후보들 (없으면 1건)
+            cnt_val = (
+                raw.get("cnt")
+                if raw.get("cnt") is not None
+                else raw.get("qty")
+                if raw.get("qty") is not None
+                else raw.get("count")
+            )
+            try:
+                cnt = int(cnt_val) if cnt_val not in (None, "", " ") else 1
+            except Exception:
+                cnt = 1
+
+            # ✅ TP/SL 라인 플래그용 맵
+            if ptype == "TP":
                 tp_map[price] = tp_map.get(price, 0) + cnt
-            elif p["type"] == "SL":
+            elif ptype == "SL":
                 sl_map[price] = sl_map.get(price, 0) + cnt
+
+            # ✅ MIT 칼럼(청산 방향) 결정
+            close_side = raw.get("close_side") or raw.get("side") or raw.get("exit_side")
+            close_side = str(close_side).upper().strip() if close_side else ""
+
+            if close_side in ("SELL", "S"):
+                mit_sell_map[price] = mit_sell_map.get(price, 0) + cnt
+            elif close_side in ("BUY", "B"):
+                mit_buy_map[price] = mit_buy_map.get(price, 0) + cnt
+            else:
+                # close_side 없으면 fallback (기존 네 정책 유지)
+                # TP → SELL MIT, SL → BUY MIT (원하면 여기 바꿔도 됨)
+                if ptype == "TP":
+                    mit_sell_map[price] = mit_sell_map.get(price, 0) + cnt
+                elif ptype == "SL":
+                    mit_buy_map[price] = mit_buy_map.get(price, 0) + cnt
 
         for r in self.rows:
             p = self.normalize_price(r.price)
@@ -147,9 +207,10 @@ class OrderBookEngine:
             r.is_tp = p in tp_map
             r.is_sl = p in sl_map
 
-            # TP → 매도 MIT / SL → 매수 MIT
-            r.my_mit_sell = tp_map.get(p, 0)
-            r.my_mit_buy = sl_map.get(p, 0)
+            r.my_mit_sell = mit_sell_map.get(p, 0)
+            r.my_mit_buy = mit_buy_map.get(p, 0)
+
+        print("[MIT MAP SIZE]", sum(r.my_mit_buy + r.my_mit_sell for r in self.rows))
 
     # =================================================
     # INTERNAL

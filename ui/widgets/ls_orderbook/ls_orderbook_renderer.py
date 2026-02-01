@@ -36,11 +36,25 @@ class OrderBookRenderer:
         self.tp_bg = QColor(46, 204, 113, 25)
         self.sl_bg = QColor(231, 76, 60, 25)
 
+        # Depth base colors
         self.ask_base = QColor(231, 76, 60)
         self.bid_base = QColor(46, 204, 113)
 
+        # --- Zone guide (좌/우 영역용, 아주 연함)
+        self.ask_zone = QColor(231, 76, 60, 14)
+        self.bid_zone = QColor(46, 204, 113, 14)
+
+        # Text colors
         self.fg_normal = QColor("#e0e0e0")
         self.fg_ls = QColor("#ffd54f")
+
+        # Tag colors (my orders)
+        self.fg_my_sell = QColor("#ffd54f")
+        self.fg_my_buy = QColor("#ffd54f")
+
+        # MIT dots
+        self.fg_mit_sell = QColor("#ff7675")
+        self.fg_mit_buy = QColor("#74b9ff")
 
         # -----------------------------
         # Fonts
@@ -80,6 +94,7 @@ class OrderBookRenderer:
 
         self.table.verticalHeader().setVisible(False)
 
+        # Init items
         for r in range(total_rows):
             for c in range(9):
                 it = self._get_item(r, c)
@@ -124,10 +139,9 @@ class OrderBookRenderer:
     # =================================================
     def _render_row(self, r: int, row: OrderBookRow, max_qty: int):
         # -----------------
-        # Background priority
+        # Base background priority
         # -----------------
         bg = self.bg_default
-
         if row.is_center:
             bg = self.bg_center
         if row.is_ls_price:
@@ -137,7 +151,10 @@ class OrderBookRenderer:
         elif row.is_sl:
             bg = self.sl_bg
 
-        self._paint_row_bg(r, bg)
+        # self._paint_row_bg(r, bg)
+        self._paint_price_row_bg(r, bg)
+        # 좌/우 영역 가이드 (항상 동일)
+        self._paint_side_zone(r)
 
         # -----------------
         # PRICE
@@ -158,7 +175,8 @@ class OrderBookRenderer:
         price_it.setFont(self.font_price)
 
         # -----------------
-        # ASK / BID
+        # ASK / BID (text)
+        #   - 건수/잔량은 데이터 있을 때만 표시
         # -----------------
         self._set_text(r, self.COL_SELL_QTY, "" if row.ask_qty <= 0 else str(row.ask_qty))
         self._set_text(r, self.COL_SELL_CNT, "" if row.ask_cnt <= 0 else str(row.ask_cnt))
@@ -166,7 +184,7 @@ class OrderBookRenderer:
         self._set_text(r, self.COL_BUY_CNT, "" if row.bid_cnt <= 0 else str(row.bid_cnt))
 
         # -----------------
-        # MY LIMIT ORDERS
+        # MY LIMIT ORDERS (매도/매수)
         # -----------------
         self._set_text(r, self.COL_SELL, "")
         self._set_text(r, self.COL_BUY, "")
@@ -174,17 +192,17 @@ class OrderBookRenderer:
         if row.my_sell_cnt > 0:
             it = self._get_item(r, self.COL_SELL)
             it.setText(str(row.my_sell_cnt))
-            it.setForeground(QColor("#ffd54f"))
+            it.setForeground(self.fg_my_sell)
             it.setFont(self.font_tag)
 
         if row.my_buy_cnt > 0:
             it = self._get_item(r, self.COL_BUY)
             it.setText(str(row.my_buy_cnt))
-            it.setForeground(QColor("#ffd54f"))
+            it.setForeground(self.fg_my_buy)
             it.setFont(self.font_tag)
 
         # -----------------
-        # MY MIT ORDERS (TP / SL)
+        # MY MIT ORDERS (TP/SL)
         # -----------------
         self._set_text(r, self.COL_MIT_SELL, "")
         self._set_text(r, self.COL_MIT_BUY, "")
@@ -192,20 +210,29 @@ class OrderBookRenderer:
         if row.my_mit_sell > 0:
             it = self._get_item(r, self.COL_MIT_SELL)
             it.setText(f"●{row.my_mit_sell}")
-            it.setForeground(QColor("#ff7675"))
+            it.setForeground(self.fg_mit_sell)
             it.setFont(self.font_tag)
 
         if row.my_mit_buy > 0:
             it = self._get_item(r, self.COL_MIT_BUY)
             it.setText(f"●{row.my_mit_buy}")
-            it.setForeground(QColor("#74b9ff"))
+            it.setForeground(self.fg_mit_buy)
             it.setFont(self.font_tag)
 
         # -----------------
         # Depth shading
+        #   ✅ 잔량(QTY)만 shading
+        #   ❌ 건수(CNT)는 shading 금지 (데이터 있어도 배경은 기본)
         # -----------------
-        self._shade_qty(r, self.COL_SELL_QTY, row.ask_qty, max_qty, self.ask_base, bg)
-        self._shade_qty(r, self.COL_BUY_QTY, row.bid_qty, max_qty, self.bid_base, bg)
+        self._shade_qty_cell_only(r, self.COL_SELL_QTY, row.ask_qty, max_qty, self.ask_base, bg)
+        self._shade_qty_cell_only(r, self.COL_BUY_QTY, row.bid_qty, max_qty, self.bid_base, bg)
+
+        # CNT는 절대 건드리지 않음 (기본 bg 유지)
+        self._reset_cell_bg_if_empty(r, self.COL_SELL_CNT, row.ask_cnt, bg)
+        self._reset_cell_bg_if_empty(r, self.COL_BUY_CNT, row.bid_cnt, bg)
+
+        # MIT / 매도 / 매수 컬럼도 기본 bg 유지(현재가 위/아래로 분리 X)
+        # (필요 시 여기서만 “셀 단위” 표시를 추가 가능)
 
     # =================================================
     # Helpers
@@ -231,7 +258,21 @@ class OrderBookRenderer:
         for c in range(self.table.columnCount()):
             self._get_item(r, c).setBackground(QBrush(color))
 
-    def _shade_qty(
+    def _paint_price_row_bg(self, r: int, color: QColor):
+        self._get_item(r, self.COL_PRICE).setBackground(QBrush(color))
+
+    def _paint_side_zone(self, r: int):
+        # 🔴 매도 영역 (MIT + 매도)
+        for c in (self.COL_MIT_SELL, self.COL_SELL):
+            it = self._get_item(r, c)
+            it.setBackground(QBrush(self.ask_zone))
+
+        # 🟢 매수 영역 (매수 + MIT)
+        for c in (self.COL_BUY, self.COL_MIT_BUY):
+            it = self._get_item(r, c)
+            it.setBackground(QBrush(self.bid_zone))
+
+    def _shade_qty_cell_only(
         self,
         r: int,
         c: int,
@@ -240,6 +281,11 @@ class OrderBookRenderer:
         base: QColor,
         base_bg: QColor,
     ):
+        """
+        ✅ 잔량 셀만 depth shading
+        - 데이터 있을 때만 셀에 색상
+        - 데이터 없으면 완전 기본 배경
+        """
         it = self._get_item(r, c)
 
         if qty <= 0 or max_qty <= 0:
@@ -247,8 +293,17 @@ class OrderBookRenderer:
             return
 
         ratio = min(qty / max_qty, 1.0)
-        alpha = int(30 + ratio * 120)
+        alpha = int(18 + ratio * 55)  # 연하게 (더 연하게 하고 싶으면 12~45로)
         it.setBackground(QBrush(QColor(base.red(), base.green(), base.blue(), alpha)))
+
+    def _reset_cell_bg_if_empty(self, r: int, c: int, value: int, base_bg: QColor):
+        """
+        ✅ 건수(CNT) 같은 곳:
+        - 값이 없으면 무조건 기본 배경
+        - 값이 있어도 '기본 배경 유지'가 원칙 (여기서는 empty만 리셋)
+        """
+        if value <= 0:
+            self._get_item(r, c).setBackground(QBrush(base_bg))
 
     def _tint_row(self, row_idx: int, color: QColor):
         for c in range(self.table.columnCount()):

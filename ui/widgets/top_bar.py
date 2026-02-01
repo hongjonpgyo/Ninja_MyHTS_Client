@@ -19,13 +19,7 @@ class TopBarWidget(QFrame):
         super().__init__(parent)
         self.main_window = parent
         self._setup_ui()
-        # self._apply_style()
         self.set_dummy_data()   # 🔥 일단 더미부터
-
-        self.clock_timer = QTimer(self)
-        self.clock_timer.timeout.connect(self._update_clock)
-        self.clock_timer.start(1000)
-        self._update_clock()
 
     # -------------------------------------------------
     def _setup_ui(self):
@@ -65,18 +59,11 @@ class TopBarWidget(QFrame):
         self.labelHigh = QLabel("고가 --")
         self.labelLow = QLabel("저가 --")
         self.labelVolume = QLabel("거래량 --")
-        self.labelFunding = QLabel("펀딩 --")
-
-        # 🔥 Spread
-        self.labelSpread = QLabel("스프레드 --")
-        self.labelSpread.setFont(self._font(11))
 
         for w in (
                 self.labelHigh,
                 self.labelLow,
                 self.labelVolume,
-                self.labelFunding,
-                self.labelSpread,
         ):
             w.setFont(self._font(11))
             mid.addWidget(w)
@@ -87,17 +74,8 @@ class TopBarWidget(QFrame):
         right = QHBoxLayout()
         right.setSpacing(8)
 
-        self.labelClock = QLabel("--:--:--")
-        self.labelClock.setFont(self._font(11))
-
         self.labelLive = QLabel("● LIVE")
         self.labelLive.setFont(self._font(11, bold=True))
-
-        self.labelWs = QLabel("WS 12ms")
-        self.labelWs.setFont(self._font(11))
-
-        self.labelExecStrength = QLabel("체결강도 0%")
-        self.labelExecStrength.setFont(self._font(11, bold=True))
 
         # 🔥 버튼들
         self.btnSetting = QPushButton("환경설정")
@@ -112,13 +90,8 @@ class TopBarWidget(QFrame):
             btn.setFixedHeight(26)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        right.addWidget(self.labelClock)
         right.addWidget(self.labelLive)
-        right.addWidget(self.labelWs)
-        right.addWidget(self.labelExecStrength)
-
         right.addSpacing(12)
-
         right.addWidget(self.btnSetting)
         right.addWidget(self.btnChart)
         right.addWidget(self.btnLogout)
@@ -150,19 +123,10 @@ class TopBarWidget(QFrame):
 
         self.labelPrice.setStyleSheet("color:#FFD700;")
         self.labelChange.setStyleSheet("color:#ff4d4d;")
-
         self.labelHigh.setStyleSheet("color:#cccccc;")
         self.labelLow.setStyleSheet("color:#cccccc;")
         self.labelVolume.setStyleSheet("color:#cccccc;")
-        self.labelFunding.setStyleSheet("color:#ff66cc;")
-
         self.labelLive.setStyleSheet("color:#2ecc71;")
-        self.labelWs.setStyleSheet("color:#aaaaaa;")
-
-        self.labelSpread.setStyleSheet("color:#cccccc;")
-        self.labelClock.setStyleSheet("color:#bbbbbb;")
-
-        self.labelExecStrength.setStyleSheet("color:#aaaaaa;")
 
     # -------------------------------------------------
     def _font(self, size, bold=False):
@@ -181,7 +145,6 @@ class TopBarWidget(QFrame):
         self.labelHigh.setText("고가 2,967.81")
         self.labelLow.setText("저가 2,951.55")
         self.labelVolume.setText("거래량 15,002")
-        self.labelFunding.setText("펀딩 +0.01%")
 
         self.set_live(True, 12)
 
@@ -194,13 +157,7 @@ class TopBarWidget(QFrame):
             self.labelLive.setText("● OFF")
             self.labelLive.setStyleSheet("color:#e74c3c;")
 
-        if latency_ms is not None:
-            self.labelWs.setText(f"WS {latency_ms}ms")
-
         # TopBarWidget 내부에 추가
-
-    def _update_clock(self):
-        self.labelClock.setText(datetime.now().strftime("%H:%M:%S"))
 
     # ===============================
     # 외부 업데이트 API
@@ -225,7 +182,6 @@ class TopBarWidget(QFrame):
         self.labelHigh.setText(f"고가 {high:,.2f}")
         self.labelLow.setText(f"저가 {low:,.2f}")
         self.labelVolume.setText(f"거래량 {volume:,}")
-        self.labelFunding.setText(f"펀딩 {funding:+.2f}%")
 
     def update_status(self, live: bool, latency_ms: int):
         if live:
@@ -234,8 +190,6 @@ class TopBarWidget(QFrame):
         else:
             self.labelLive.setText("● OFF")
             self.labelLive.setStyleSheet("color:#e74c3c;")
-
-        self.labelWs.setText(f"WS {latency_ms}ms")
 
     def update_status_by_controller(self, status: str, latency: int):
         if status == "LIVE":
@@ -248,43 +202,6 @@ class TopBarWidget(QFrame):
             self.labelLive.setText("● OFF")
             self.labelLive.setStyleSheet("color:#e74c3c;")
 
-        self.labelWs.setText(f"WS {latency}ms")
-
-    def update_spread(self, bid: float, ask: float):
-        if bid <= 0 or ask <= 0 or ask < bid:
-            self.labelSpread.setText("스프레드 --")
-            self.labelSpread.setStyleSheet("color:#888888;")
-            return
-
-        spread = ask - bid
-        mid = (ask + bid) / 2
-        pct = (spread / mid) * 100 if mid else 0.0
-
-        self.labelSpread.setText(
-            f"스프레드 {spread:.2f} ({pct:.4f}%)"
-        )
-
-        # 🎨 컬러 로직
-        if pct < 0.02:
-            color = "#2ecc71"   # 좁음
-        elif pct < 0.05:
-            color = "#dddddd"   # 보통
-        else:
-            color = "#e74c3c"   # 넓음
-
-        self.labelSpread.setStyleSheet(f"color:{color};")
-
-    def update_exec_strength(self, value: float):
-        sign = "+" if value >= 0 else ""
-        self.labelExecStrength.setText(f"체결강도 {sign}{value:.0f}%")
-
-        if value > 20:
-            self.labelExecStrength.setStyleSheet("color:#ff4d4d;")  # 매수 우위
-        elif value < -20:
-            self.labelExecStrength.setStyleSheet("color:#4da6ff;")  # 매도 우위
-        else:
-            self.labelExecStrength.setStyleSheet("color:#aaaaaa;")  # 중립
-
 
     # TopBarWidget 내부
     def reset(self, symbol: str):
@@ -294,9 +211,6 @@ class TopBarWidget(QFrame):
         self.labelHigh.setText("고가 --")
         self.labelLow.setText("저가 --")
         self.labelVolume.setText("거래량 --")
-        self.labelFunding.setText("펀딩 --")
-        self.labelSpread.setText("스프레드 --")
-
         self.update_status(live=False, latency_ms=0)
 
     def open_preferences(self):

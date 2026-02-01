@@ -300,6 +300,7 @@ class OrderController:
             print("[Load Protection ERROR]", e)
 
     def _apply_protections_to_ui(self, rows: list[dict]):
+        print("[PROTECTIONS rows sample]", rows[:2])
         # 1️⃣ 보호 패널
         self.main.protection_panel.load_protections(rows)
 

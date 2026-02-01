@@ -48,7 +48,7 @@ class BalanceWidget(QWidget):
         self.lbl_margin = make_value("0")
 
         titles_top = [
-            ("예탁금", self.lbl_deposit),
+            ("예탁금1", self.lbl_deposit),
             ("오버금액", self.lbl_over),
             ("가용예탁금", self.lbl_available),
             ("로스컷기준", self.lbl_cut),

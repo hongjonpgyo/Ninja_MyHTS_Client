@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import (
     QFrame, QPushButton, QHBoxLayout
 )
 from PyQt6.QtCore import pyqtSignal
+from ui.utils.ls_symbol_name import display_symbol_name
 
 
 class FavoriteBar(QFrame):
@@ -12,8 +13,9 @@ class FavoriteBar(QFrame):
 
         self.setObjectName('FavoriteBar')
         self.buttons = {}   # symbol -> button
+        self.active_symbol = None
         self._setup_ui()
-        # self._apply_style()
+        self._apply_style()
 
     def _setup_ui(self):
         self.setFixedHeight(36)
@@ -36,9 +38,18 @@ class FavoriteBar(QFrame):
             padding: 4px 10px;
             font-size: 12px;
             color: #dddddd;
+            min-height: 21px;
+            padding-top: 1px;
+            padding-bottom: 1px;
         }
         QPushButton:hover {
             background-color: #333333;
+        }
+        QPushButton:checked {
+            background-color: #355f7a;
+            border: 1px solid #4da3ff;
+            color: #ffffff;
+            font-weight: bold;
         }
         QPushButton:pressed {
             background-color: #1f1f1f;
@@ -52,16 +63,43 @@ class FavoriteBar(QFrame):
         if symbol in self.buttons:
             return
 
-        btn = QPushButton(symbol)
-        btn.clicked.connect(lambda: self.symbolClicked.emit(symbol))
+        display_name, _ = display_symbol_name(symbol)
+
+        btn = QPushButton(display_name)
+        btn.setCheckable(True)  # 🔥 토글 버튼
+        btn.setToolTip(symbol)
+        btn.clicked.connect(lambda _, s=symbol: self._on_button_clicked(s))
 
         self.layout.insertWidget(
             self.layout.count() - 1, btn
         )
         self.buttons[symbol] = btn
 
+    def _on_button_clicked(self, symbol: str):
+        self.set_active(symbol)
+        self.symbolClicked.emit(symbol)
+
+    def set_active(self, symbol: str):
+        if self.active_symbol == symbol:
+            return
+
+        for sym, btn in self.buttons.items():
+            btn.setChecked(sym == symbol)
+
+        self.active_symbol = symbol
+
     def remove_symbol(self, symbol: str):
         btn = self.buttons.pop(symbol, None)
         if btn:
             btn.setParent(None)
             btn.deleteLater()
+
+
+    def clear(self):
+        """
+        모든 즐겨찾기 버튼 제거
+        """
+        for btn in self.buttons.values():
+            btn.deleteLater()
+
+        self.buttons.clear()

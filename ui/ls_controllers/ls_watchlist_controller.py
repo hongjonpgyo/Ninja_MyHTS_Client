@@ -1,6 +1,6 @@
 import asyncio
 
-from PyQt6.QtWidgets import QTableWidgetItem
+from PyQt6.QtWidgets import QTableWidgetItem, QAbstractItemView, QHeaderView
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont
 
@@ -15,41 +15,54 @@ class LSWatchListController:
     - 종목 선택용 리스트에 최적화
     """
 
-    COL_NAME = 0
-    COL_SYMBOL = 1
-    COL_PRICE = 2
-    COL_DIFF = 3
+    COL_FAV = 0  # ⭐ 추가
+    COL_NAME = 1
+    COL_SYMBOL = 2
+    COL_PRICE = 3
+    COL_DIFF = 4
 
-    def __init__(self, table, on_symbol_click=None):
+    def __init__(self, table, on_symbol_click=None, on_favorite_toggle=None, on_favorite_remove=None):
         self.table = table
         self.on_symbol_click = on_symbol_click
+        self.on_favorite_toggle = on_favorite_toggle
+        self.on_favorite_remove = on_favorite_remove
 
         self.bold_font = QFont()
         self.bold_font.setBold(True)
+
+        self.favorites: set[str] = set()
 
         self._init_table()
         # self._apply_style()
 
         self.table.cellClicked.connect(self._on_cell_clicked)
+        self.table.cellDoubleClicked.connect(self._on_cell_double_clicked)
 
     # -------------------------------------------------
     # Table init
     # -------------------------------------------------
     def _init_table(self):
-        headers = ["종목명", "코드", "현재가", "대비"]
+        headers = ["★", "종목명", "코드", "현재가", "대비"]
 
         t = self.table
         t.setColumnCount(len(headers))
         t.setHorizontalHeaderLabels(headers)
         t.setRowCount(0)
 
+        t.setColumnWidth(self.COL_FAV, 20)
+
         t.verticalHeader().setVisible(False)
         t.setSortingEnabled(False)
         t.setSelectionMode(t.SelectionMode.SingleSelection)
         t.setSelectionBehavior(t.SelectionBehavior.SelectRows)
 
-        t.horizontalHeader().setStretchLastSection(True)
         t.verticalHeader().setDefaultSectionSize(24)
+
+        t.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        t.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+        header = t.horizontalHeader()
+        header.setStretchLastSection(False)
 
     # -------------------------------------------------
     # Public
@@ -83,6 +96,13 @@ class LSWatchListController:
         symbol = row.get("symbol", "")
         trd_p = row.get("last_price")
         diff = row.get("diff")
+
+        set_item(
+            self.COL_FAV,
+            "★" if symbol in self.favorites else "",
+            Qt.AlignmentFlag.AlignCenter,
+            QColor("#FFD700") if symbol in self.favorites else QColor("#555555"),
+        )
 
         # -----------------------
         # 종목명 / 코드
@@ -168,6 +188,34 @@ class LSWatchListController:
         # 🔥 symbol + 원본 row dict 전달
         self.on_symbol_click(symbol, row_data)
 
+    def _on_cell_double_clicked(self, row: int, col: int):
+        # ⭐ 컬럼에서만 동작하게 하고 싶다면 조건 추가 가능
+        # if col != self.COL_FAV:
+        #     return
+
+        symbol_item = self.table.item(row, self.COL_SYMBOL)
+        if not symbol_item:
+            return
+
+        symbol = symbol_item.text()
+
+        if self.on_favorite_toggle:
+            self.on_favorite_toggle(symbol)
+
+    def _update_favorite_icon(self, row: int, symbol: str):
+        fav_item = self.table.item(row, self.COL_FAV)
+        if not fav_item:
+            fav_item = QTableWidgetItem("")
+            fav_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table.setItem(row, self.COL_FAV, fav_item)
+
+        if symbol in self.favorites:
+            fav_item.setText("★")
+            fav_item.setForeground(QColor("#FFD700"))
+        else:
+            fav_item.setText("")
+            fav_item.setForeground(QColor("#555555"))
+
     def on_price_event(self, event: dict):
         print('on_price_event start~')
         symbol = event.get("symbol")
@@ -218,5 +266,28 @@ class LSWatchListController:
             f"{arrow} {abs(day_rate):.2f}%"
         )
         self.table.item(row, self.COL_DIFF).setForeground(color)
+
+    def set_favorites(self, favorites: set[str]):
+        """
+        외부(MainWindow)에서 즐겨찾기 set을 주입받아
+        ⭐ 컬럼 표시를 즉시 갱신한다.
+        """
+        self.favorites = set(favorites)
+        print(self.favorites)
+        for row in range(self.table.rowCount()):
+            symbol_item = self.table.item(row, self.COL_SYMBOL)
+            if not symbol_item:
+                continue
+
+            symbol = symbol_item.text()
+
+            fav_item = self.table.item(row, self.COL_FAV)
+            if fav_item is None:
+                fav_item = QTableWidgetItem()
+                fav_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                fav_item.setFlags(Qt.ItemFlag.ItemIsEnabled)  # 선택/편집 방지
+                self.table.setItem(row, self.COL_FAV, fav_item)
+
+            fav_item.setText("★" if symbol in self.favorites else "")
 
 

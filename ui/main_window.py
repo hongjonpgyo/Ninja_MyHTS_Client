@@ -1,5 +1,6 @@
 # ui/main_window.py
 import asyncio
+from datetime import datetime
 
 from PyQt6.QtGui import QAction, QKeySequence, QShortcut
 from PyQt6.QtWidgets import QMainWindow, QSizePolicy, QWidget, QHBoxLayout, QPushButton, QMessageBox
@@ -48,6 +49,7 @@ from ui.widgets.ls_orderbook.ls_orderbook_widget import LSOrderBookWidget
 from ui.widgets.ls_position.ls_position_table import LSPositionsTable
 from ui.widgets.ls_balance.ls_balance_table import LSBalanceTable
 from ui.widgets.executions_table import ExecutionsTable
+from ui.widgets.ls_trade.trades_table import TradesTable
 from ui.widgets.open_orders_widget import OpenOrdersWidget
 from ui.widgets.symbol_summary_widget import SymbolSummaryWidget
 from ui.widgets.toast import ToastMessage
@@ -236,7 +238,6 @@ class MainWindow(QMainWindow):
 
         self.favoriteBar = FavoriteBar()
         self.favoriteBar.symbolClicked.connect(self.on_favorite_clicked)
-        # self.splitterLeft.insertWidget(0, self.favoriteBar)
         self.topBarLayout.addWidget(self.favoriteBar)
 
         # self.orderControlBar = OrderControlBar(self)
@@ -246,6 +247,8 @@ class MainWindow(QMainWindow):
         self.ls_watchlist_controller = LSWatchListController(
             table=self.tableWatchlist,
             on_symbol_click=self.on_watchlist_symbol_clicked,
+            on_favorite_toggle=self.on_favorite_toggled,
+            on_favorite_remove=self.on_favorite_remove
         )
         self.tableWatchlist.setSizePolicy(
             QSizePolicy.Policy.Expanding,
@@ -263,14 +266,17 @@ class MainWindow(QMainWindow):
         )
 
         self.balance_widget = LSBalanceTable()
-        self.accountLayout.addWidget(self.balance_widget)
+        self.accountSummaryLayout.addWidget(self.balance_widget)
 
-        self.executions_table = ExecutionsTable()
-        self.executionsLayout.addWidget(self.balance_widget)
+        # self.executions_table = ExecutionsTable()
+        # self.executionsLayout.addWidget(self.balance_widget)
 
         # self.reservation_widget = ReservationWidget()
         # self.reservationLayout.addWidget(self.reservation_widget)
         self.setup_reservation_tab()
+
+        self.tradesTable = TradesTable()
+        self.tradesTabLayout.addWidget(self.tradesTable)
 
     def _init_right_panel(self):
         self.time_sales_controller = TimeSalesController(self.tableTimeSales)
@@ -369,6 +375,7 @@ class MainWindow(QMainWindow):
             self.account_id,
         )
         self.enqueue_async(self.reservation_controller.refresh())
+        self.enqueue_async(self._load_initial_executions())
 
         self.show()
 
@@ -474,6 +481,48 @@ class MainWindow(QMainWindow):
         # Watchlist 클릭과 동일한 흐름으로 처리
         self.enqueue_async(self.change_symbol(symbol))
 
+    def on_favorite_toggled(self, symbol: str):
+        try:
+            # 현재 즐겨찾기 목록
+            favorites = {f["symbol_code"] for f in self.favorite_api.list()}
+
+            if symbol in favorites:
+                self.favorite_api.remove(symbol)
+            else:
+                self.favorite_api.add(symbol)
+
+            # ⭐ 모든 UI 동기화
+            self._apply_favorites_ui()
+
+        except Exception as e:
+            print("[Favorite] toggle failed:", e)
+
+    def on_favorite_remove(self, symbol: str):
+        try:
+            favorites = {f["symbol_code"] for f in self.favorite_api.list()}
+
+            if symbol in favorites:
+                self.favorite_api.remove(symbol)
+                self._apply_favorites_ui()
+
+        except Exception as e:
+            print("[Favorite] remove failed:", e)
+
+    def _apply_favorites_ui(self):
+        """
+        현재 favorite_api 상태를 기준으로
+        모든 UI(FavoriteBar, WatchList)를 동기화
+        """
+        favs = {fav["symbol_code"] for fav in self.favorite_api.list()}
+
+        # 1️⃣ FavoriteBar
+        self.favoriteBar.clear()
+        for symbol in favs:
+            self.favoriteBar.add_symbol(symbol)
+
+        # 2️⃣ WatchList ⭐
+        self.ls_watchlist_controller.set_favorites(favs)
+
     def on_position_selected(self, pos: dict):
         enriched = {
             **pos,
@@ -575,15 +624,10 @@ class MainWindow(QMainWindow):
             balance = await self.ls_account_api.get_balance(self.account_id)
 
             positions = await self.ls_account_api.get_positions(self.account_id)
-            # self.safe_ui(
-            #     self.balance_widget.update_balance,
-            #     balance
-            # )
             self.safe_ui(
-                self.update_account_summary,
+                self.balance_widget.update_balance,
                 balance
             )
-
             self.safe_ui(
                 self.positions_table.render,
                 positions
@@ -595,71 +639,6 @@ class MainWindow(QMainWindow):
     async def reload_reservations(self):
         await self.reservation_controller.refresh()
         # self.reservationWidget.update_rows(rows)
-
-    # # =====================================================
-    # # ORDERBOOK
-    # # =====================================================
-    # def on_orderbook_click(self, row, col):
-    #     if col == PRICE_COL:
-    #         return
-    #
-    #     item = self.tableOrderbook.item(row, PRICE_COL)
-    #     if not item:
-    #         return
-    #
-    #     try:
-    #         price = float(item.text().replace(",", ""))
-    #     except ValueError:
-    #         return
-    #
-    #     side = "SELL" if col <= 3 else "BUY"
-    #     self.order_controller.place_limit_from_book(
-    #         side=side, price=price, qty=1
-    #     )
-
-    def update_account_summary(self, data: dict):
-        if not data:
-            return
-
-        deposit = float(data.get("deposit", 0))
-        available = float(data.get("available", 0))
-        pnl = float(data.get("unrealized_pnl", 0))
-        rate = float(data.get("unrealized_pnl_rate", 0))
-
-        self.lblDeposit.setText(fmt_money(deposit))
-        self.lblAvailable.setText(fmt_money(available))
-        self.lblPnL.setText(fmt_pnl(pnl))
-        self.lblPnLRate.setText(fmt_rate(rate) + "%")
-
-        # 색상
-        if pnl > 0:
-            self.lblPnL.setStyleSheet("color:#2ecc71;")
-        elif pnl < 0:
-            self.lblPnL.setStyleSheet("color:#e74c3c;")
-        else:
-            self.lblPnL.setStyleSheet("color:#cccccc;")
-
-    # =====================================================
-    # WS CALLBACKS
-    # =====================================================
-    # def _on_trade_ws(self, data: dict):
-    #     self.exec_strength.add_trade(data)
-    #     strength = self.exec_strength.calc()
-    #
-    #     self.safe_ui(self.topBar.update_exec_strength, strength)
-    #     self.safe_ui(self.time_sales_controller.on_trade, data)
-
-    # async def _start_trade_ws_initial(self):
-    #     if self.trade_ws:
-    #         return
-    #
-    #     self.time_sales_controller.clear()
-    #
-    #     self.trade_ws = TradesWSClient(
-    #         symbol=self.current_symbol,
-    #         callback=self._on_trade_ws,
-    #     )
-    #     await self.trade_ws.start()
 
     def safe_ui_handle_execution(self, msg: dict):
         data = msg.get("data", {}) if msg.get("type") == "execution" else msg
@@ -732,6 +711,38 @@ class MainWindow(QMainWindow):
     async def load_fx_rates(self):
         global_rates.FX_RATES = await self.api.get("/ls/futures/fx/rates")
 
+    async def _load_initial_executions(self):
+        try:
+            executions = await self.api.get_executions(self.account_id)
+
+            # 최초 1회만 clear
+            self.tradesTable.setRowCount(0)
+
+            self.last_exec_time = None
+
+            # ⚠️ 서버 응답이 최신순인지 확인 필요
+            # 최신순이면 reversed()
+            for exec in reversed(executions):
+                exec_time = datetime.fromisoformat(exec["created_at"])
+
+                self.tradesTable.append_trade(
+                    symbol=exec["symbol"],
+                    side=exec["side"],
+                    qty=exec["qty"],
+                    price=exec["price"],
+                    status="완료" if exec["exec_type"] == "TRADE" else "취소",
+                    trade_time=exec_time,
+                )
+
+                if self.last_exec_time is None or exec_time > self.last_exec_time:
+                    self.last_exec_time = exec_time
+
+            # 🔥 히스토리 로딩 끝난 뒤 SSE 연결
+            # self._start_execution_sse()
+
+        except Exception as e:
+            print("[Executions] initial load failed:", e)
+
     # =====================================================
     # FETCHERS
     # =====================================================
@@ -746,6 +757,8 @@ class MainWindow(QMainWindow):
         try:
             for fav in self.favorite_api.list():
                 self.favoriteBar.add_symbol(fav["symbol_code"])
+
+            self._apply_favorites_ui()
         except Exception as e:
             print("[Favorite] load failed:", e)
 
@@ -777,7 +790,7 @@ class MainWindow(QMainWindow):
     # CLOCK
     # =====================================================
     def _on_clock_tick(self):
-        asyncio.create_task(self.update_ls_clock())
+        self.enqueue_async(self.update_ls_clock())
 
     async def update_ls_clock(self):
         try:

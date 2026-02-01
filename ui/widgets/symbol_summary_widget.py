@@ -1,78 +1,132 @@
 from PyQt6.QtWidgets import (
-    QFrame, QLabel, QComboBox,
-    QHBoxLayout, QVBoxLayout, QPushButton, QGridLayout
+    QFrame, QLabel, QGridLayout
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QFont
+
 import core.global_rates as global_rates
 
+
 class SymbolSummaryWidget(QFrame):
+    ROW_HEIGHT = 22
+
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.labels: dict[str, QLabel] = {}
         self._setup_ui()
 
+    # =====================================================
+    # UI
+    # =====================================================
     def _setup_ui(self):
         self.setFixedHeight(120)
+        self.setObjectName("SymbolSummary")
 
         grid = QGridLayout(self)
-        grid.setContentsMargins(6, 6, 6, 6)
-        grid.setSpacing(4)
+        grid.setContentsMargins(8, 6, 8, 6)
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(0)
 
         fields = [
-            ("전일", "--"), ("틱가치", "--"),
-            ("시가", "--"), ("환율", "--"),
-            ("저가", "--"), ("만기일", "--"),
-            ("고가", "--"), ("잔존일수", "--"),
+            ("전일", "틱가치"),
+            ("시가", "환율"),
+            ("저가", "만기일"),
+            ("고가", "잔존일수"),
         ]
 
-        self.labels = {}
+        for row, (left, right) in enumerate(fields):
+            self._create_row(grid, row, left, right)
 
-        for i, (k, v) in enumerate(fields):
-            r = i // 2
-            c = (i % 2) * 2
+        self._apply_style()
 
-            key = QLabel(k)
-            val = QLabel(v)
+    def _create_row(self, grid: QGridLayout, row: int, left: str, right: str):
+        key_l, val_l = self._create_pair(left)
+        key_r, val_r = self._create_pair(right)
 
-            key.setAlignment(Qt.AlignmentFlag.AlignLeft)
-            val.setAlignment(Qt.AlignmentFlag.AlignRight)
+        grid.addWidget(key_l, row, 0)
+        grid.addWidget(val_l, row, 1)
+        grid.addWidget(key_r, row, 3)
+        grid.addWidget(val_r, row, 4)
 
-            grid.addWidget(key, r, c)
-            grid.addWidget(val, r, c + 1)
+        # 중앙 세로 구분선
+        if row == 0:
+            sep = QFrame()
+            sep.setFrameShape(QFrame.Shape.VLine)
+            sep.setFixedWidth(1)
+            sep.setStyleSheet("background:#2a2a2a;")
+            grid.addWidget(sep, 0, 2, len(grid), 1)
 
-            self.labels[k] = val
+    def _create_pair(self, key: str):
+        key_lbl = QLabel(key)
+        key_lbl.setObjectName("SummaryKey")
+        key_lbl.setProperty("row", "true")
+        key_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
+        val_lbl = QLabel("--")
+        val_lbl.setObjectName("SummaryValue")
+        val_lbl.setProperty("row", "true")
+        val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
+        self.labels[key] = val_lbl
+        return key_lbl, val_lbl
+
+    # =====================================================
+    # DATA
+    # =====================================================
     def update_ls_symbol(self, row: dict):
-        self.labels["전일"].setText(f"{row.get('close_p', '--')}")
-        self.labels["시가"].setText(f"{row.get('open_p', '--')}")
-        self.labels["고가"].setText(f"{row.get('high_p', '--')}")
-        self.labels["저가"].setText(f"{row.get('low_p', '--')}")
-        self.labels["틱가치"].setText(f"{row.get('tick_value', '--')}")
-        # 🔥 환율: 글로벌 캐시 기준
-        currency = row.get("crncy_cd")
-        self.labels["환율"].setText(
-            self._fmt_fx(currency)
-        )
-        #
-        # self.labels["환율"].setText(row.get("crncy_cd", "--"))
+        self._set("전일", row.get("close_p"))
+        self._set("시가", row.get("open_p"))
+        self._set("고가", row.get("high_p"))
+        self._set("저가", row.get("low_p"))
+        self._set("틱가치", row.get("tick_value"))
 
-        self.labels["만기일"].setText(row.get("mrtr_dt", "--"))
-        self.labels["잔존일수"].setText(
+        self._set(
+            "환율",
+            self._fmt_fx(row.get("crncy_cd"))
+        )
+
+        self._set("만기일", row.get("mrtr_dt"))
+        self._set(
+            "잔존일수",
             f"{row['remain_days']}일" if row.get("remain_days") is not None else "--"
         )
 
+    def _set(self, key: str, value):
+        self.labels[key].setText("--" if value in (None, "") else str(value))
+
+    # =====================================================
+    # UTIL
+    # =====================================================
     @staticmethod
     def _fmt_fx(currency: str | None) -> str:
         if not currency:
             return "--"
-        print("currency")
-        print(currency)
-        rate = global_rates.FX_RATES.get(currency)
-        print("FX_REATES END")
 
+        rate = global_rates.FX_RATES.get(currency)
         if rate is None:
             return f"--({currency})"
 
-        return f"{int(round(rate)):,}원({currency})"
+        return f"{int(round(rate)):,}원 ({currency})"
 
-
+    # =====================================================
+    # STYLE
+    # =====================================================
+    def _apply_style(self):
+        self.setStyleSheet("""
+        QFrame#SymbolSummary {
+            background: #1f1f1f;
+            border-left: 1px solid #2a2a2a;   
+        }
+        QLabel#SummaryKey {
+            color: #9a9a9a;
+            font-size: 12px;
+        }
+        QLabel#SummaryValue {
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 600;  
+        }
+        QLabel[row="true"] {
+            border-bottom: 1px solid #262626;  
+            padding: 3px 0px;
+        }
+        """)

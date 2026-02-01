@@ -3,7 +3,7 @@ class ReservationController:
         self.widget = widget
         self.api = api
         self.account_id = account_id
-
+        self._rows: list[dict] = []
         # UI → Controller 이벤트 연결
         self.widget.on_cancel = self.cancel_reservation
 
@@ -19,17 +19,41 @@ class ReservationController:
             print("[ReservationController] refresh error:", e)
             rows = []
 
-        self.widget.update_rows(rows or [])
+        self._rows = rows or []  # 🔥 캐시
+        self.widget.update_rows(self._rows)
 
     # ----------------------------------
     async def cancel_reservation(self, reservation_id: int):
         try:
+            # 1️⃣ 예약 취소
             await self.api.post(
                 f"/ls/futures/reservation/{reservation_id}/cancel",
                 json={}
             )
 
-            # ✅ 가장 안전한 방식: 재조회
+            # 2️⃣ 🔥 해당 예약이 걸린 symbol 알아내기
+            # 2️⃣ 🔥 캐시에서 해당 reservation 찾기
+            row = next(
+                (r for r in self._rows if r.get("reservation_id") == reservation_id),
+                None
+            )
+            symbol = row.get("symbol") if row else None
+
+            if symbol:
+                # 3️⃣ 🔥 보호주문도 함께 취소
+                await self.api.post(
+                    "/ls/futures/protections/cancel",
+                    json={
+                        "account_id": self.account_id,
+                        "symbol": symbol,
+                    }
+                )
+
+                # 4️⃣ 오더북 보호주문 제거
+                if hasattr(self.widget, "main") and self.widget.main.orderbook:
+                    self.widget.main.orderbook.set_protections([])
+
+            # 5️⃣ 예약 목록 재조회
             await self.refresh()
 
         except Exception as e:
