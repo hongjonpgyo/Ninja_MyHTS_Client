@@ -3,7 +3,7 @@ import asyncio
 from datetime import datetime
 
 from PyQt6.QtGui import QAction, QKeySequence, QShortcut
-from PyQt6.QtWidgets import QMainWindow, QSizePolicy, QWidget, QHBoxLayout, QPushButton, QMessageBox
+from PyQt6.QtWidgets import QMainWindow, QSizePolicy, QWidget, QHBoxLayout, QPushButton, QMessageBox, QCheckBox
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, Qt
 
@@ -111,6 +111,25 @@ class MainWindow(QMainWindow):
         self.order_api = LSOrderApi(self.api)
 
         # -------------------------
+        # Clock
+        # -------------------------
+        self._last_ls_time = None
+        self.clock_timer = QTimer(self)
+        self.clock_timer.timeout.connect(self._on_clock_tick)
+        self.clock_timer.start(1000)
+
+        self.labelClock.setFixedWidth(125)
+        self.labelClock.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.chkAutoCenter = QCheckBox("고정")
+        self.chkAutoCenter.setChecked(False)
+        self.chkAutoCenter.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        self.clockLayout.addWidget(self.labelClock)
+        self.clockLayout.addSpacing(6)
+        self.clockLayout.addWidget(self.chkAutoCenter)
+
+        # -------------------------
         # UI Components
         # -------------------------
         self._init_top_bar()
@@ -140,18 +159,6 @@ class MainWindow(QMainWindow):
         self.exec_ws = None
         self.account_ws = None
         # self.trade_ws = None
-
-        # -------------------------
-        # Clock
-        # -------------------------
-        self._last_ls_time = None
-        self.clock_timer = QTimer(self)
-        self.clock_timer.timeout.connect(self._on_clock_tick)
-        self.clock_timer.start(1000)
-
-        # self.labelClock.setStyleSheet(
-        #     "color:#00ff99;font-weight:bold;font-size:13px;"
-        # )
 
         # -------------------------
         # Layout tuning
@@ -226,6 +233,9 @@ class MainWindow(QMainWindow):
         self.topBar.comboSymbol.currentTextChanged.connect(
             lambda s: self.enqueue_async(self.change_symbol(s))
         )
+        self.chkAutoCenter.stateChanged.connect(
+            self.on_auto_center_changed
+        )
 
     def _init_orderbook(self):
         self.orderbook = LSOrderBookWidget(
@@ -264,6 +274,10 @@ class MainWindow(QMainWindow):
             # self.protection_panel.load_position
             self.on_position_selected
         )
+        self.positions_table.setMinimumHeight(125)
+        # protection_panel 생성 직후
+        self.protection_panel.setMinimumHeight(180)
+        self.protection_panel.setMaximumHeight(220)
 
         self.balance_widget = LSBalanceTable()
         self.accountSummaryLayout.addWidget(self.balance_widget)
@@ -287,26 +301,26 @@ class MainWindow(QMainWindow):
             self.symbolSummary,
         )
 
+    async def init_my_order_store(self):
+        orders = await self.order_api.get_open_orders(self.account_id)
+
+        self.my_order_store.clear()
+        for o in orders:
+            self.my_order_store.add_order(o)
+
+        print(self.my_order_store.get_my_orders())
+
     def set_qty(self, value: int):
         self.spinQty.setValue(value)
 
     def _tune_splitters(self):
-        # self.splitterRoot.setStretchFactor(0, 6)
-        # self.splitterRoot.setStretchFactor(1, 5)
-        #
-        # self.splitterLeft.setStretchFactor(0, 8)
-        # self.splitterLeft.setStretchFactor(1, 2)
-        #
-        # self.splitterTop.setStretchFactor(0, 5)
-        # self.splitterTop.setStretchFactor(1, 4)
-        # 좌측 오더북을 더 크게
-        self.splitterRoot.setStretchFactor(0, 6)  # left
-        self.splitterRoot.setStretchFactor(1, 4)  # right
+        self.splitterRoot.setStretchFactor(0, 5)
+        self.splitterRoot.setStretchFactor(1, 5)
 
-        # 🔥 여기만 바꾸면 됨
-        self.splitterLeft.setStretchFactor(0, 3)  # 상단(요약)
-        self.splitterLeft.setStretchFactor(1, 5)  # 오더북
-        self.splitterLeft.setStretchFactor(2, 3)  # 하단탭 ↓
+        # 🔥 여기 핵심
+        self.splitterLeft.setStretchFactor(0, 2)  # 상단 요약 ↓
+        self.splitterLeft.setStretchFactor(1, 6)  # 포지션 테이블 ↑↑
+        self.splitterLeft.setStretchFactor(2, 2)  # 보호 패널 ↓
 
     # =====================================================
     # SAFE UI / ASYNC QUEUE
@@ -376,6 +390,7 @@ class MainWindow(QMainWindow):
         )
         self.enqueue_async(self.reservation_controller.refresh())
         self.enqueue_async(self._load_initial_executions())
+        self.enqueue_async(self.init_my_order_store())
 
         self.show()
 
@@ -414,6 +429,10 @@ class MainWindow(QMainWindow):
 
     def on_close_all_positions(self):
         self.enqueue_async(self._close_all_positions_worker())
+
+    def on_auto_center_changed(self, state: int):
+        enabled = (state == Qt.CheckState.Checked.value)
+        self.orderbook.auto_center_enabled = enabled
 
     async def _close_current_symbol_worker(self):
         symbol = self.current_symbol

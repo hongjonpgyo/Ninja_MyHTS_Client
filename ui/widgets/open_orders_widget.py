@@ -1,6 +1,7 @@
 from PyQt6 import QtWidgets, QtCore, QtGui
 from PyQt6.QtWidgets import QTableWidgetItem, QAbstractItemView, QHeaderView
 from ui.utils.formatter import fmt_time
+from ui.utils.ls_symbol_name import display_symbol_name
 
 
 class OpenOrdersWidget(QtWidgets.QWidget):
@@ -256,7 +257,9 @@ class OpenOrdersWidget(QtWidgets.QWidget):
             oid = o.get("order_id", "")
             status = o.get("status", "OPEN")
 
-            self._set_item(r, 0, symbol)
+            display_nm, full_nm = display_symbol_name(symbol)
+
+            self._set_item(r, 0, display_nm)
             side_item = self._set_item(r, 1, side)
             price_item = self._set_item(r, 2, price)
             self._set_item(r, 3, qty)

@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
 )
 from PyQt6.QtGui import QColor, QBrush, QFont
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QMargins, QEasingCurve, QPoint
 
 from services.ls.ls_orderbook_engine import OrderBookRow
 
@@ -22,7 +22,7 @@ class OrderBookRenderer:
 
     def __init__(self, table: QTableWidget):
         self.table = table
-
+        self._nudge_anim = None
         # -----------------------------
         # Colors
         # -----------------------------
@@ -133,6 +133,33 @@ class OrderBookRenderer:
 
         self._tint_row(row_idx, color)
         QTimer.singleShot(ms, self._restore_all)
+
+    # OrderBookRenderer.py
+    def nudge(self, dy: int, ms: int = 1000):
+        """
+        dy > 0 : 가격 상승 느낌 (살짝 아래로 눌렸다가 복원)
+        dy < 0 : 가격 하락 느낌 (살짝 위로 눌렸다가 복원)
+        """
+        vp = self.table.viewport()
+
+        start_pos = vp.pos()
+        end_pos = QPoint(start_pos.x(), start_pos.y() + dy)
+
+        if self._nudge_anim:
+            self._nudge_anim.stop()
+
+        self._nudge_anim = QPropertyAnimation(vp, b"pos", self.table)
+        self._nudge_anim.setDuration(ms)
+        self._nudge_anim.setStartValue(start_pos)
+        self._nudge_anim.setEndValue(end_pos)
+        self._nudge_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+        # 🔥 끝나면 즉시 원래 자리로 복원
+        self._nudge_anim.finished.connect(
+            lambda: vp.move(start_pos)
+        )
+
+        self._nudge_anim.start()
 
     # =================================================
     # Row render

@@ -30,6 +30,7 @@ class LSOrderBookWidget(QWidget):
         self.order_controller = None
         self.table = table
         self.tick_size = float(tick_size)
+        self._dead_zone_ticks = 3
 
         self.symbol: Optional[str] = None
         self.center_price: Optional[float] = None
@@ -111,58 +112,63 @@ class LSOrderBookWidget(QWidget):
             self.renderer.render(self.engine.rows)
 
     def update_ls_price(self, ls_price: float):
-        """
-        ✅ '이동감' 핵심:
-        - build로 매번 갈아끼우지 말고 rows를 shift 해서 위/아래로 밀어준다
-        """
         ls_price = float(ls_price)
 
+        # 최초 1회
         if self.center_price is None or not self.engine.rows:
-            # 최초 1회는 build
-            self._prev_center_price = self.center_price
             self.center_price = ls_price
             self._rebuild(full=True)
             return
 
-        prev = float(self.center_price)
+        prev = self.center_price
         self._prev_center_price = prev
         self.center_price = ls_price
 
-        # 몇 틱 움직였는지
+        # 현재가가 몇 틱 이동했는지
         tick_move = int(round((ls_price - prev) / self.tick_size))
 
         if tick_move == 0:
-            # 같은 틱이면 기준선만 갱신 + 가벼운 pulse
+            # 같은 틱이면 중앙 표시만 갱신
             self.engine.mark_ls_price(ls_price)
-            self._refresh_marks_only()
+            self.renderer.render(self.engine.rows)
             return
 
-        # 너무 많이 점프하면(예: 10틱 이상) shift보다 build가 안정적
-        if abs(tick_move) > ORDERBOOK_DEPTH:
+        # 너무 크게 움직이면 축 재생성
+        if abs(tick_move) >= ORDERBOOK_DEPTH:
             self._rebuild(full=True)
             return
 
-        # ✅ 이동감: shift
+        # ✅ 핵심: rows shift → 가격들이 위/아래로 흐르는 느낌
         self._shift_rows(tick_move)
 
-        # shift 후 depth/my_order 반영은 "가볍게" 재적용(축은 유지)
+        # 🔥 여기 추가
+        if tick_move > 0:
+            self.renderer.nudge(dy=+6, ms=70)  # 위로 튕김
+        elif tick_move < 0:
+            self.renderer.nudge(dy=-6, ms=70)  # 아래로 튕김
+
+        # depth / 내 주문 / 보호주문 재적용
         self.engine.build(
             bids=self._last_bids,
             asks=self._last_asks,
-            center_price=self.center_price,
+            center_price=self.center_price,  # ✅ 항상 현재가
             my_orders=self._last_my_orders,
         )
+
         self.engine.mark_ls_price(self.center_price)
         self.engine.apply_protections(self._protections)
         self.renderer.render(self.engine.rows)
 
-        # 방향감 스크롤(아주 살짝)
-        self._animate_scroll_by_ticks(tick_move)
-
-        # center pulse
+        # 중앙 강조
         center_idx = self._find_center_index()
         if center_idx is not None:
             self.renderer.pulse_center(center_idx, ms=140)
+
+        # update_ls_price 맨 마지막 부분
+        if self.auto_center_enabled:
+            self.center_price = ls_price  # 현재가 = 중심
+            self._rebuild(full=True)  # 축 재정렬
+            return
 
     def flash_execution(self, price: float, side: Optional[str] = None):
         idx = self._find_row_index_by_price(price)
@@ -197,97 +203,80 @@ class LSOrderBookWidget(QWidget):
         self.renderer.render(self.engine.rows)
 
         # 기준선은 화면 중앙 쪽에 유지
-        if self.auto_center_enabled:
-            self._scroll_to_center(animated=True)
+        # if self.auto_center_enabled:
+        #     self._scroll_to_center(animated=True)
 
     def _refresh_marks_only(self):
         # mark만 바꾼 후 렌더
         self.renderer.render(self.engine.rows)
-        if self.auto_center_enabled:
-            self._scroll_to_center(animated=False)
-
+        # if self.auto_center_enabled:
+        #     self._scroll_to_center(animated=False)
         # 살짝 pulse
         center_idx = self._find_center_index()
         if center_idx is not None:
             self.renderer.pulse_center(center_idx, ms=120)
 
     def _shift_rows(self, tick_move: int):
-        """
-        tick_move > 0 : 기준가 상승 → 화면은 "위로 올라가는 느낌"
-        tick_move < 0 : 기준가 하락 → 화면은 "아래로 내려가는 느낌"
-        """
         rows = self.engine.rows
         if not rows:
             return
 
-        # tick_move만큼 한 칸씩 밀기
         if tick_move > 0:
             for _ in range(tick_move):
-                # 위 한 줄 제거
                 rows.pop(0)
-                # 아래 새 row 추가 (마지막 가격에서 -tick)
                 new_price = round(rows[-1].price - self.tick_size, 2)
                 rows.append(self._make_empty_row(new_price))
         else:
             for _ in range(abs(tick_move)):
-                rows.pop()  # 아래 제거
+                rows.pop()
                 new_price = round(rows[0].price + self.tick_size, 2)
                 rows.insert(0, self._make_empty_row(new_price))
 
-        # center/ls 마킹은 build에서 다시 세팅되지만, 시각적 일관성을 위해 1차 반영
+        # ✅ center는 항상 고정
         for i, r in enumerate(rows):
             r.is_center = (i == ORDERBOOK_DEPTH)
-            r.is_ls_price = (r.price == round(self.center_price, 2))
-
-        self.engine.apply_protections(self._protections)
+            r.is_ls_price = (round(r.price, 2) == round(self.center_price, 2))
 
     def _make_empty_row(self, price: float) -> OrderBookRow:
         # ✅ 네가 말한 make_empty_row "실제 구현"
         return OrderBookRow(price=round(float(price), 2))
 
     def _scroll_to_center(self, animated: bool = True):
-        idx = self._find_center_index()
-        if idx is None:
-            return
-
-        # 중앙에 유지하려면 실제 목표 스크롤 값을 계산해야 함
-        item = self.table.item(idx, self.COL_PRICE)
-        if not item:
-            return
-
-        sb = self.table.verticalScrollBar()
-        cur = sb.value()
-
-        # Qt가 목표값을 계산하도록 한번 요청
-        self.table.scrollToItem(item, self.table.ScrollHint.PositionAtCenter)
-        target = sb.value()
-        sb.setValue(cur)
-
-        if animated:
-            self._animate_scroll(cur, target, duration=140)
-        else:
-            sb.setValue(target)
+        pass
+        # idx = self._find_center_index()
+        # if idx is None:
+        #     return
+        #
+        # # 중앙에 유지하려면 실제 목표 스크롤 값을 계산해야 함
+        # item = self.table.item(idx, self.COL_PRICE)
+        # if not item:
+        #     return
+        #
+        # sb = self.table.verticalScrollBar()
+        # cur = sb.value()
+        #
+        # # Qt가 목표값을 계산하도록 한번 요청
+        # self.table.scrollToItem(item, self.table.ScrollHint.PositionAtCenter)
+        # target = sb.value()
+        # sb.setValue(cur)
+        #
+        # if animated:
+        #     self._animate_scroll(cur, target, duration=140)
+        # else:
+        #     sb.setValue(target)
 
     def _animate_scroll_by_ticks(self, tick_move: int):
-        """
-        shift 후 방향감을 조금 더 주기 위해 살짝 스크롤 애니메이션.
-        """
-        sb = self.table.verticalScrollBar()
-        cur = sb.value()
-
-        # rowHeight가 0일 수 있어 안전 처리
-        rh = self.table.rowHeight(0) or 18
-        step = int(rh * abs(tick_move))
-
-        # tick_move > 0(상승) → 위로 올라가는 느낌: 스크롤 값을 '감소'
-        target = cur - step if tick_move > 0 else cur + step
-
-        # 범위 클램프
-        target = max(sb.minimum(), min(sb.maximum(), target))
-        self._animate_scroll(cur, target, duration=120)
-
-        # 애니메이션 후 다시 center로 정렬(살짝 안정감)
-        QTimer.singleShot(140, lambda: self._scroll_to_center(animated=True))
+        pass
+        # sb = self.table.verticalScrollBar()
+        # cur = sb.value()
+        #
+        # rh = self.table.rowHeight(0) or 18
+        # step = int(rh * abs(tick_move))
+        #
+        # target = cur - step if tick_move > 0 else cur + step
+        # target = max(sb.minimum(), min(sb.maximum(), target))
+        #
+        # self._animate_scroll(cur, target, duration=120)
 
     def _animate_scroll(self, start: int, end: int, duration: int = 140):
         # ✅ 네가 말한 _animate_scroll "실제 구현"

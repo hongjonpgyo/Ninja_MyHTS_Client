@@ -108,19 +108,15 @@ class LSPositionProtectionPanel(QWidget):
         root.addWidget(self._separator())
 
         # -----------------------------
-        # 기준가 표시
+        # 기준가 + 버튼 (하단 액션 바)
         # -----------------------------
+        action_bar = QHBoxLayout()
+        action_bar.setContentsMargins(0, 8, 0, 0)
+        action_bar.setSpacing(12)
+
         self.lbl_base_price = QLabel("기준가: -")
         self.lbl_base_price.setFont(self._bold_font(10))
-        root.addWidget(self.lbl_base_price)
-
-        root.addStretch()
-
-        # -----------------------------
-        # 버튼
-        # -----------------------------
-        btns = QHBoxLayout()
-        btns.addStretch()
+        self.lbl_base_price.setStyleSheet("color:#e0e0e0;")
 
         self.btn_apply = QPushButton("적용")
         self.btn_apply.setFixedWidth(80)
@@ -129,13 +125,15 @@ class LSPositionProtectionPanel(QWidget):
         self.btn_clear = QPushButton("해제")
         self.btn_clear.setFixedWidth(80)
 
-        btns.addWidget(self.btn_apply)
-        btns.addWidget(self.btn_clear)
-
         self.btn_apply.clicked.connect(self._on_apply)
         self.btn_clear.clicked.connect(self._on_clear)
 
-        root.addLayout(btns)
+        action_bar.addWidget(self.lbl_base_price)
+        action_bar.addStretch()
+        action_bar.addWidget(self.btn_apply)
+        action_bar.addWidget(self.btn_clear)
+
+        root.addLayout(action_bar)
 
         # -----------------------------
         # 이벤트 연결

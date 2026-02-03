@@ -3,6 +3,8 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont
 from datetime import datetime
 
+from ui.utils.ls_symbol_name import display_symbol_name
+
 
 class TradesTable(QTableWidget):
     """
@@ -55,14 +57,17 @@ class TradesTable(QTableWidget):
         self.insertRow(row)
 
         # 시간 (날짜 + 시간)
+
         self._set_item(
-            row, self.COL_TIME,
+            row,
+            self.COL_TIME,
             trade_time.strftime("%Y-%m-%d %H:%M:%S"),
-            align=Qt.AlignmentFlag.AlignLeft
+            align=Qt.AlignmentFlag.AlignCenter
         )
 
+        display_nm, full_nm = display_symbol_name(symbol)
         # 종목
-        self._set_item(row, self.COL_SYMBOL, symbol, bold=True, align=Qt.AlignmentFlag.AlignCenter)
+        self._set_item(row, self.COL_SYMBOL, display_nm, bold=True, align=Qt.AlignmentFlag.AlignCenter)
 
         # 구분
         side_text = "매수" if side == "BUY" else "매도"
@@ -115,6 +120,9 @@ class TradesTable(QTableWidget):
             font = QFont()
             font.setBold(True)
             item.setFont(font)
+
+        if col == self.COL_TIME:
+            item.setFont(QFont("JetBrains Mono", 12))
 
         if align:
             item.setTextAlignment(align | Qt.AlignmentFlag.AlignVCenter)

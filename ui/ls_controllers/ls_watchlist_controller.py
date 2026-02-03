@@ -62,7 +62,7 @@ class LSWatchListController:
         t.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         header = t.horizontalHeader()
-        header.setStretchLastSection(False)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
     # -------------------------------------------------
     # Public

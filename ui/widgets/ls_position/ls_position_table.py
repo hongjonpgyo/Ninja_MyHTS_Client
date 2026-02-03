@@ -8,6 +8,7 @@ from ui.ls_controllers import ls_order_controller
 from ui.ls_controllers.ls_order_controller import OrderController
 from ui.utils.formatter import fmt
 from ui.utils.formatter import DISPLAY_FORMAT, DEFAULT_FMT
+from ui.utils.ls_symbol_name import display_symbol_name
 from ui.widgets.ls_position.ls_protection_editor import LSProtectionEditor
 
 
@@ -79,8 +80,9 @@ class LSPositionsTable(QTableWidget):
     def _draw_row(self, r, row):
         symbol = row.get("symbol", "")
         fmt_value = DISPLAY_FORMAT.get(symbol, DEFAULT_FMT)
+        display_nm, full_nm = display_symbol_name(symbol)
 
-        self._set_item(r, 0, symbol)
+        self._set_item(r, 0, display_nm)
 
         # -------------------------
         # 포지션 방향 (용어 통일)
@@ -167,7 +169,7 @@ class LSPositionsTable(QTableWidget):
         editor = LSProtectionEditor(symbol, self)
 
         self.setCellWidget(protection_row, 0, editor)
-        self.setRowHeight(protection_row, 44)
+        self.setRowHeight(protection_row, 22)
 
         self._protection_rows[symbol] = protection_row
 

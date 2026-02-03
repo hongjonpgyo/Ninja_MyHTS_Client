@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QTableWidgetItem, QAbstractItemView
+from PyQt6.QtWidgets import QTableWidgetItem, QAbstractItemView, QHeaderView
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor, QFont
 from datetime import datetime
@@ -29,25 +29,7 @@ class TimeSalesController:
         h = t.horizontalHeader()
         h.setStretchLastSection(True)
         h.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # # 🎨 스타일 통일
-        # t.setStyleSheet("""
-        # QTableWidget {
-        #     background-color: #1f1f1f;
-        #     color: #e0e0e0;
-        #     font-size: 12px;
-        # }
-        # QHeaderView::section {
-        #     background-color: #2b2b2b;
-        #     color: #cccccc;
-        #     font-size: 11px;
-        #     padding: 6px;
-        #     border: none;
-        # }
-        # QTableWidget::item:selected {
-        #     background-color: transparent;
-        # }
-        # """)
+        h.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
     # -------------------------------------------------
     def clear(self):

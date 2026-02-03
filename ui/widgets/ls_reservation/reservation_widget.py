@@ -11,6 +11,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont
 
+from ui.utils.ls_symbol_name import display_symbol_name
+
 
 class ReservationWidget(QWidget):
     """
@@ -87,8 +89,10 @@ class ReservationWidget(QWidget):
         row = self.table.rowCount()
         self.table.insertRow(row)
 
+        display_nm, full_nm = display_symbol_name(r["symbol"])
+
         self.table.setItem(row, self.COL_TIME, self._time_item(r["created_at"]))
-        self.table.setItem(row, self.COL_SYMBOL, self._center_item(r["symbol"], bold=True))
+        self.table.setItem(row, self.COL_SYMBOL, self._center_item(display_nm, bold=True))
         self.table.setItem(row, self.COL_SIDE, self._side_item(r["side"]))
         self.table.setItem(row, self.COL_QTY, self._center_item(str(int(r["qty"])), bold=True))
         self.table.setItem(row, self.COL_TRIGGER, self._trigger_item(r))

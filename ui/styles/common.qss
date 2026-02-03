@@ -99,7 +99,16 @@ QLabel {
 }
 
 QLabel#labelClock {
-    font-size: 24px;        /* 기존 14~15px → 18px */
-    font-weight: 600;       /* Bold 느낌 없이 또렷 */
-    color: #2ecc71;         /* 기존 녹색 유지 */
+    font-family: "JetBrains Mono", "Menlo", "Consolas";
+    font-size: 24px;
+    font-weight: 600;
+    color: #2ecc71;
+}
+
+/* =====================================================
+   Time / Numeric Monospace (HTS 필수)
+===================================================== */
+*[mono="true"] {
+    font-family: "JetBrains Mono", "Menlo", "Consolas";
+    font-size: 13px;
 }
