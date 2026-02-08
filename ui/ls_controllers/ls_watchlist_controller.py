@@ -216,20 +216,7 @@ class LSWatchListController:
             fav_item.setText("")
             fav_item.setForeground(QColor("#555555"))
 
-    def on_price_event(self, event: dict):
-        print('on_price_event start~')
-        symbol = event.get("symbol")
-        price = event.get("price")
-        diff = event.get("diff")
-
-        if symbol not in self._symbol_row_map:
-            return
-
-        row = self._symbol_row_map[symbol]
-
-        self._update_price_cell(row, price)
-
-    def update_price(self, symbol: str, price: float, diff: float):
+    def update_price(self, symbol: str, price: float):
         """
         PriceController 에서 호출하는 표준 인터페이스
         """

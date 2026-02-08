@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
+from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont
 from datetime import datetime
@@ -36,7 +36,7 @@ class TradesTable(QTableWidget):
         self.setShowGrid(False)
 
         self.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.setSelectionMode(QTableWidget.SelectionMode.ExtendedSelection)
 
         header = self.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -100,6 +100,47 @@ class TradesTable(QTableWidget):
             color=status_color,
             align=Qt.AlignmentFlag.AlignCenter
         )
+
+    from PyQt6.QtWidgets import QMessageBox
+
+    def delete_selected_trades(self):
+        rows = sorted(
+            {idx.row() for idx in self.selectedIndexes()},
+            reverse=True
+        )
+
+        if not rows:
+            QMessageBox.information(self, "안내", "삭제할 체결내역을 선택하세요.")
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "선택 삭제",
+            f"선택한 체결내역 {len(rows)}건을 삭제하시겠습니까?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        for row in rows:
+            self.removeRow(row)
+
+    def clear_all_trades(self):
+        if self.rowCount() == 0:
+            return
+
+        reply = QMessageBox.warning(
+            self,
+            "전체 삭제",
+            "모든 체결내역을 삭제하시겠습니까?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        self.setRowCount(0)
 
     def _set_item(
         self,

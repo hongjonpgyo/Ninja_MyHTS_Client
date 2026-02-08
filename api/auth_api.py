@@ -1,12 +1,11 @@
 # api/auth_api.py
 import requests
-
+from config.settings import LS_BASE_URL
 
 class AuthApi:
-    BASE_URL = "http://127.0.0.1:9000"
 
     def signup(self, email: str, password: str):
-        url = f"{self.BASE_URL}/auth/signup"
+        url = f"{LS_BASE_URL}/auth/signup"
         res = requests.post(
             url,
             json={

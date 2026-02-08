@@ -182,10 +182,15 @@ class MainWindow(QMainWindow):
 
         self.execution_worker.start()  # ← 이게 없으면 100% 안 뜸
 
-        self.price_worker = PriceStreamWorker(LS_BASE_URL)
-        self.price_worker.price_received.connect(
-            self.ls_watchlist_controller.on_price_event
+        self.price_worker = PriceStreamWorker(
+            base_url=self.api.base_url,
+            token=self.api.token,
         )
+
+        self.price_worker.price_received.connect(
+            self.on_price_event
+        )
+
         self.price_worker.start()
 
         self.orderbookControlLayout.setContentsMargins(8, 6, 8, 6)
@@ -288,9 +293,9 @@ class MainWindow(QMainWindow):
         # self.reservation_widget = ReservationWidget()
         # self.reservationLayout.addWidget(self.reservation_widget)
         self.setup_reservation_tab()
-
-        self.tradesTable = TradesTable()
-        self.tradesTabLayout.addWidget(self.tradesTable)
+        self.setup_trades_tab()
+        # self.tradesTable = TradesTable()
+        # self.tradesTabLayout.addWidget(self.tradesTable)
 
     def _init_right_panel(self):
         self.time_sales_controller = TimeSalesController(self.tableTimeSales)
@@ -423,6 +428,30 @@ class MainWindow(QMainWindow):
         # 요약 패널
         if hasattr(self, "selected_ls_row"):
             self.symbolSummary.update_ls_symbol(self.selected_ls_row)
+
+    def on_price_event(self, event: dict):
+        etype = event.get("event_type")
+        print("on_price_event")
+        if etype == "PRICE":
+            self.on_price_tick(event)
+
+        elif etype == "ORDERBOOK":
+            self.orderbook_controller.on_orderbook_event(event)
+
+    def on_price_tick(self, event: dict):
+        symbol = event.get("symbol")
+        price = event.get("price")
+
+        # 1️⃣ WatchList
+        if hasattr(self, "ls_watchlist_controller"):
+            self.ls_watchlist_controller.update_price(symbol, price)
+
+        # 2️⃣ OrderBook 현재가만 갱신
+        if (
+                self.orderbook_controller.current_symbol == symbol
+                and price is not None
+        ):
+            self.orderbook_controller.view.update_ls_price(price)
 
     def on_close_current_symbol(self):
         self.enqueue_async(self._close_current_symbol_worker())
@@ -715,6 +744,39 @@ class MainWindow(QMainWindow):
 
     async def cancel_all_reservations(self):
         await self.api.cancel_reservations(scope="ALL")
+
+    def setup_trades_tab(self):
+        # 체결내역 테이블
+        self.tradesTable = TradesTable()
+        # 버튼 바
+        self.tradesActionBar = QWidget()
+        bar = QHBoxLayout(self.tradesActionBar)
+        bar.setContentsMargins(6, 6, 6, 6)
+        bar.setSpacing(8)
+
+        self.btnTradeDeleteSelected = QPushButton("선택삭제")
+        self.btnTradeDeleteAll = QPushButton("전체삭제")
+
+        self.btnTradeDeleteSelected.clicked.connect(
+            self.tradesTable.delete_selected_trades
+        )
+        self.btnTradeDeleteAll.clicked.connect(
+            self.tradesTable.clear_all_trades
+        )
+
+        for btn in (
+                self.btnTradeDeleteSelected,
+                self.btnTradeDeleteAll,
+        ):
+            btn.setFixedHeight(28)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        bar.addStretch()
+        bar.addWidget(self.btnTradeDeleteSelected)
+        bar.addWidget(self.btnTradeDeleteAll)
+
+        self.tradesTabLayout.addWidget(self.tradesActionBar)
+        self.tradesTabLayout.addWidget(self.tradesTable)
 
     async def cancel_symbol_reservations(self):
         symbol = self.current_symbol

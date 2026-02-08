@@ -66,6 +66,14 @@ class OrderBookRenderer:
         self.font_tag.setPointSize(9)
         self.font_tag.setBold(True)
 
+        self.font_qty = QFont()
+        self.font_qty.setPointSize(15)
+        self.font_qty.setBold(True)
+
+        self.font_mit = QFont()
+        self.font_mit.setPointSize(14)
+        self.font_mit.setBold(True)
+
         self._last_rows: List[OrderBookRow] = []
 
     # =================================================
@@ -280,6 +288,7 @@ class OrderBookRenderer:
         it = self._get_item(r, c)
         it.setText(text)
         it.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
 
     def _paint_row_bg(self, r: int, color: QColor):
         for c in range(self.table.columnCount()):

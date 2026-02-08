@@ -210,7 +210,7 @@ class OrderBookEngine:
             r.my_mit_sell = mit_sell_map.get(p, 0)
             r.my_mit_buy = mit_buy_map.get(p, 0)
 
-        print("[MIT MAP SIZE]", sum(r.my_mit_buy + r.my_mit_sell for r in self.rows))
+        # print("[MIT MAP SIZE]", sum(r.my_mit_buy + r.my_mit_sell for r in self.rows))
 
     # =================================================
     # INTERNAL
@@ -242,10 +242,31 @@ class OrderBookEngine:
 
         for d in depth_list:
             price = self.normalize_price(float(d["price"]))
+
+            # ✅ qty 키 정규화 (여기 핵심)
+            qty = (
+                d.get("qty")
+                if d.get("qty") is not None
+                else d.get("db_all_qty")
+                if d.get("db_all_qty") is not None
+                else d.get("rem")
+                if d.get("rem") is not None
+                else 0
+            )
+
+            cnt = (
+                d.get("cnt")
+                if d.get("cnt") is not None
+                else d.get("no")
+                if d.get("no") is not None
+                else 0
+            )
+
             out[price] = {
-                "qty": int(d.get("db_all_qty", 0)),
-                "cnt": int(d.get("cnt", 0)),
+                "qty": int(qty),
+                "cnt": int(cnt),
             }
+
         return out
 
     def _apply_my_orders(self, row: OrderBookRow, my_orders: Dict):

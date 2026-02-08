@@ -60,7 +60,7 @@ class PriceController:
         # Watchlist는 항상 갱신
         # -------------------------
         if self.watchlist and symbol:
-            self.watchlist.update_price(symbol, price, diff)
+            self.watchlist.update_price(symbol, price)
 
         # -------------------------
         # 선택 심볼 필터

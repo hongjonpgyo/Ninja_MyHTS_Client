@@ -1,6 +1,5 @@
 import time
 
-
 class OrderBookController:
     def __init__(self, api_client, view):
         self.api = api_client
@@ -8,11 +7,13 @@ class OrderBookController:
         self.current_symbol = None
         self._last_switch_ts = 0.0
 
+    # ==================================================
+    # Symbol Switch
+    # ==================================================
     async def set_symbol(self, symbol: str):
         if symbol == self.current_symbol:
             return
 
-        # ⏱ 연타 방지 (200ms)
         now = time.time()
         if now - self._last_switch_ts < 0.2:
             return
@@ -21,15 +22,36 @@ class OrderBookController:
         prev_symbol = self.current_symbol
         self.current_symbol = symbol
 
-        # UI 초기화
         self.view.clear()
 
         try:
-            # 🔥 백엔드에 심볼 변경 요청
             await self.api.set_orderbook_symbol(symbol)
         except Exception as e:
-            # ❌ 실패 시 롤백
             self.current_symbol = prev_symbol
             self.view.clear()
-            # self.view.show_error("호가 구독 실패")
             print("[OrderBook] set_symbol error:", e)
+
+    # ==================================================
+    # 🔥 PUSH EVENT (핵심)
+    # ==================================================
+    def on_orderbook_event(self, event: dict):
+        symbol = event.get("symbol")
+        if symbol != self.current_symbol:
+            return
+
+        bids = event.get("bids", [])
+        asks = event.get("asks", [])
+
+        if not bids or not asks:
+            return
+
+        # 🔥 중심가를 호가 기준으로 재계산
+        center_price = (bids[0]["price"] + asks[0]["price"]) / 2
+
+        self.view.update_depth(
+            bids=bids,
+            asks=asks,
+            center_price=center_price,
+        )
+
+
