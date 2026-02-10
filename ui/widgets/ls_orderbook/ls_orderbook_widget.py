@@ -34,14 +34,15 @@ class LSOrderBookWidget(QWidget):
 
         self.symbol: Optional[str] = None
         self.center_price: Optional[float] = None
+        self.last_trade_price: Optional[float] = None
+        self.has_real_price = False
         self._prev_center_price: Optional[float] = None
 
         self._last_bids: List[Dict] = []
         self._last_asks: List[Dict] = []
         self._last_my_orders: Dict = {}
         self._protections: list[dict] = []
-
-        self.table.cellClicked.connect(self.on_orderbook_click)
+        self.base_price: Optional[float] = None
 
         self.engine = OrderBookEngine(depth=ORDERBOOK_DEPTH, tick_size=self.tick_size)
         self.renderer = OrderBookRenderer(self.table)
@@ -50,6 +51,13 @@ class LSOrderBookWidget(QWidget):
         self._scroll_anim: Optional[QPropertyAnimation] = None
 
         self.auto_center_enabled = False
+
+        self.protection_panel = None
+        self._bind_events()
+
+    def _bind_events(self):
+        # 🔥 클릭 (여기!)
+        self.table.cellClicked.connect(self._on_cell_clicked)
 
     def set_order_controller(self, controller):
         self.order_controller = controller
@@ -72,6 +80,9 @@ class LSOrderBookWidget(QWidget):
         self.engine.clear()
         self.renderer.render([])
 
+    def set_protection_panel(self, panel):
+        self.protection_panel = panel
+
     def set_protections(self, rows: list[dict]):
         """
         rows = [
@@ -90,10 +101,14 @@ class LSOrderBookWidget(QWidget):
         if my_orders is not None:
             self._last_my_orders = my_orders
 
-        self._prev_center_price = self.center_price
-        self.center_price = float(center_price)
+        # 🔥 핵심 방어
+        if self.has_real_price:
+            # ❌ ORDERBOOK center_price 무시
+            pass
+        else:
+            # 최초 1회만 허용
+            self.center_price = float(center_price)
 
-        # depth 업데이트는 일단 build로 재생성 OK (깊이 데이터가 바뀌기 때문)
         self._rebuild(full=True)
 
     def update_my_orders(self, my_orders: Dict):
@@ -108,11 +123,13 @@ class LSOrderBookWidget(QWidget):
                 row.my_sell_cnt = 0
                 row.my_buy_cnt = 0
                 self.engine._apply_my_orders(row, my_orders)
-
+            self.engine.apply_protections(self._protections)
             self.renderer.render(self.engine.rows)
 
     def update_ls_price(self, ls_price: float):
+        self.last_trade_price = ls_price
         ls_price = float(ls_price)
+        self.has_real_price = True
 
         # 최초 1회
         if self.center_price is None or not self.engine.rows:
@@ -170,7 +187,13 @@ class LSOrderBookWidget(QWidget):
             self._rebuild(full=True)  # 축 재정렬
             return
 
+    def clear_base_price_visual(self):
+        self.renderer.set_base_price(None)
+        self.renderer.set_hover_price(None)
+
     def flash_execution(self, price: float, side: Optional[str] = None):
+        if price is None:
+            return  # 🔥 핵심 방어
         idx = self._find_row_index_by_price(price)
         if idx is None:
             return
@@ -304,29 +327,30 @@ class LSOrderBookWidget(QWidget):
                 return i
         return None
 
-    def on_orderbook_click(self, row, col):
-
-        # -------------------------
-        # 가격 가져오기 (공통)
-        # -------------------------
-        item = self.table.item(row, self.COL_PRICE)
-        if not item:
+    def _on_cell_clicked(self, row: int, col: int):
+        price = self._get_price_from_row(row)
+        if price is None:
             return
-
-        try:
-            price = float(item.text().replace(",", ""))
-        except ValueError:
-            return
-
-        self.priceClicked.emit(price)
 
         qty = 1
 
-        # =====================================================
-        # ✅ 주문 허용 컬럼 (화이트리스트)
-        # =====================================================
-        # 지정가 SELL
-        if col == self.renderer.COL_SELL:
+        # =========================
+        # 1️⃣ 가격 컬럼 → 보호 UX
+        # =========================
+        if col == self.COL_PRICE:
+            # 기준가 판단 ❌
+            # 그냥 가격만 전달
+            self.priceClicked.emit(price)
+            return
+
+        # =========================
+        # 2️⃣ 주문 컬럼 → 즉시 주문
+        # =========================
+        if not self.order_controller:
+            return
+
+        # 지정가 매도
+        if col == self.COL_SELL:
             self.order_controller.place_limit_from_book(
                 side="SELL",
                 price=price,
@@ -334,8 +358,8 @@ class LSOrderBookWidget(QWidget):
             )
             return
 
-        # 지정가 BUY
-        if col == self.renderer.COL_BUY:
+        # 지정가 매수
+        if col == self.COL_BUY:
             self.order_controller.place_limit_from_book(
                 side="BUY",
                 price=price,
@@ -343,26 +367,32 @@ class LSOrderBookWidget(QWidget):
             )
             return
 
-        # 시장가 SELL (MIT)
-        if col == self.renderer.COL_MIT_SELL:
+        # 시장가 매도
+        if col == self.COL_MIT_SELL:
             self.order_controller.place_market_from_book(
                 side="SELL",
                 qty=qty,
             )
             return
 
-        # 시장가 BUY (MIT)
-        if col == self.renderer.COL_MIT_BUY:
+        # 시장가 매수
+        if col == self.COL_MIT_BUY:
             self.order_controller.place_market_from_book(
                 side="BUY",
                 qty=qty,
             )
             return
 
-        # -------------------------
-        # ❌ 나머지 모든 컬럼
-        # -------------------------
-        return
+    def _get_price_from_row(self, row: int) -> float | None:
+        it = self.table.item(row, self.renderer.COL_PRICE)
+        if not it:
+            return None
+
+        text = it.text().replace("TP", "").replace("SL", "").strip()
+        try:
+            return float(text.replace(",", ""))
+        except ValueError:
+            return None
 
     def clear(self):
         # 엔진 상태 초기화

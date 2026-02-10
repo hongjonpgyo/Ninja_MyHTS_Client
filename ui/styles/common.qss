@@ -112,3 +112,24 @@ QLabel#labelClock {
     font-family: "JetBrains Mono", "Menlo", "Consolas";
     font-size: 13px;
 }
+
+QPushButton[protectQty="true"] {
+    background-color: #2b2b2b;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #ccc;
+    padding: 2px 6px;
+}
+
+QPushButton[protectQty="true"]:checked {
+    background-color: #1abc9c;
+    border: 1px solid #1abc9c;
+    color: #000;
+    font-weight: bold;
+}
+
+QPushButton[protectQty="true"]:disabled {
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    color: #555;
+}

@@ -56,7 +56,7 @@ class OrderBookEngine:
         호가 스냅샷 기반 전체 재구성
         (MIT / TP / SL 은 여기서 처리하지 않음)
         """
-        self.center_price = center_price
+        # self.center_price = center_price
         self.rows.clear()
 
         price_axis = self._build_price_axis(center_price)

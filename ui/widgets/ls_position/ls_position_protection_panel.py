@@ -2,10 +2,11 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QSpinBox, QPushButton, QFrame, QCheckBox
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QFont
 
 class LSPositionProtectionPanel(QWidget):
+    cancelRequested = pyqtSignal()
 
     def __init__(self, order_controller, parent=None):
         super().__init__(parent)
@@ -16,7 +17,8 @@ class LSPositionProtectionPanel(QWidget):
         self.last_clicked_price = None
         self._tp_price = None
         self._sl_price = None
-        self.tick_size = 5.0  # TODO: 종목별로 주입 가능
+        self.tick_size = 1.0  # TODO: 종목별로 주입 가능
+        self.protect_qty = 1
 
         self._build_ui()
         self.setEnabled(False)
@@ -26,15 +28,15 @@ class LSPositionProtectionPanel(QWidget):
     # -------------------------------------------------
     def _build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 10, 10, 10)
-        root.setSpacing(8)
+        root.setContentsMargins(3, 3, 3, 3)
+        root.setSpacing(4)
 
-        # -----------------------------
-        # 제목
-        # -----------------------------
-        title = QLabel("포지션 보호 (손절 / 익절)")
-        title.setFont(self._bold_font(12))
-        root.addWidget(title)
+        # # -----------------------------
+        # # 제목
+        # # -----------------------------
+        # title = QLabel("포지션 보호 (손절 / 익절)")
+        # title.setFont(self._bold_font(12))
+        # root.addWidget(title)
 
         root.addWidget(self._separator())
 
@@ -49,12 +51,46 @@ class LSPositionProtectionPanel(QWidget):
         self.lbl_avg = self._info_label("평균가: -")
 
         info.addWidget(self.lbl_symbol)
+        info.addSpacing(20)
         info.addWidget(self.lbl_side)
+        info.addSpacing(20)
         info.addWidget(self.lbl_qty)
+        info.addSpacing(20)
         info.addWidget(self.lbl_avg)
+        info.addSpacing(20)
         info.addStretch()
 
         root.addLayout(info)
+        root.addWidget(self._separator())
+
+        # -----------------------------
+        # 보호 수량 버튼
+        # -----------------------------
+        qty_row = QHBoxLayout()
+        qty_row.setSpacing(6)
+
+        lbl_qty_title = QLabel("수량")
+        lbl_qty_title.setFont(self._bold_font(10))
+
+        qty_row.addWidget(lbl_qty_title)
+        qty_row.addSpacing(10)
+
+        self.qty_buttons = {}
+
+        for q in [1, 2, 3, 5, 10]:
+            btn = QPushButton(str(q))
+            btn.setCheckable(True)
+            btn.setFixedSize(36, 24)
+            btn.setProperty("protectQty", "true")
+
+            btn.clicked.connect(lambda checked, v=q: self._on_qty_selected(v))
+
+            self.qty_buttons[q] = btn
+            qty_row.addWidget(btn)
+
+        qty_row.addStretch()
+        root.addLayout(qty_row)
+
         root.addWidget(self._separator())
 
         # -----------------------------
@@ -118,6 +154,10 @@ class LSPositionProtectionPanel(QWidget):
         self.lbl_base_price.setFont(self._bold_font(10))
         self.lbl_base_price.setStyleSheet("color:#e0e0e0;")
 
+        self.btn_cancel = QPushButton("취소")
+        self.btn_cancel.setFixedWidth(80)
+
+
         self.btn_apply = QPushButton("적용")
         self.btn_apply.setFixedWidth(80)
         self.btn_apply.setEnabled(False)
@@ -125,11 +165,14 @@ class LSPositionProtectionPanel(QWidget):
         self.btn_clear = QPushButton("해제")
         self.btn_clear.setFixedWidth(80)
 
+        self.btn_cancel.clicked.connect(self._on_cancel_clicked)
         self.btn_apply.clicked.connect(self._on_apply)
         self.btn_clear.clicked.connect(self._on_clear)
 
         action_bar.addWidget(self.lbl_base_price)
         action_bar.addStretch()
+        action_bar.addWidget(self.btn_cancel)
+        action_bar.addSpacing(40)
         action_bar.addWidget(self.btn_apply)
         action_bar.addWidget(self.btn_clear)
 
@@ -153,6 +196,8 @@ class LSPositionProtectionPanel(QWidget):
         self.current_position = pos
         self.account_id = pos.get("account_id")  # ✅ 여기
         self.setEnabled(True)
+        self._on_qty_selected(1)
+        self.tick_size = pos.get("price_tick", 1.0)
 
         self.lbl_symbol.setText(f"종목: {pos['symbol']}")
 
@@ -175,14 +220,6 @@ class LSPositionProtectionPanel(QWidget):
         self.lbl_sl_price.setText("계산가: -")
 
         self._update_apply_state()
-
-    def on_price_clicked(self, price: float):
-        """
-        오더북 / 차트 클릭 시 호출
-        """
-        self.last_clicked_price = price
-        self.lbl_base_price.setText(f"기준가: {price:,.2f}")
-        self._recalc()
 
     def clear(self):
         self.current_position = None
@@ -244,6 +281,14 @@ class LSPositionProtectionPanel(QWidget):
     def _update_apply_state(self):
         self.btn_apply.setEnabled(False)
 
+    def _on_qty_selected(self, qty: int):
+        # 포지션 수량 초과 방어
+        max_qty = abs(int(self.current_position["qty"])) if self.current_position else qty
+        self.protect_qty = min(qty, max_qty)
+
+        for q, btn in self.qty_buttons.items():
+            btn.setChecked(q == qty)
+
     def _on_apply(self):
         if not self.current_position or not self.account_id:
             return
@@ -261,7 +306,8 @@ class LSPositionProtectionPanel(QWidget):
             "protections": [],
         }
 
-        qty = abs(int(pos["qty"]))
+        # qty = abs(int(pos["qty"]))
+        qty = self.protect_qty
 
         if self._tp_price is not None:
             payload["protections"].append({
@@ -281,6 +327,13 @@ class LSPositionProtectionPanel(QWidget):
         # -------------------------
         self._send_protection(payload)
 
+        if hasattr(self, "on_applied"):
+            self.on_applied(self.current_position["symbol"])
+
+    def _on_cancel_clicked(self):
+        self.reset_base_price()
+        self.cancelRequested.emit()
+
     def _on_clear(self):
         if not self.current_position:
             return
@@ -289,6 +342,71 @@ class LSPositionProtectionPanel(QWidget):
             account_id=self.account_id,
             symbol=self.current_position["symbol"],
         )
+
+    @pyqtSlot(float)
+    def on_price_clicked(self, price: float):
+        if not self.current_position:
+            return
+
+        # =========================
+        # 1️⃣ 첫 클릭 → 기준가만 설정
+        # =========================
+        if self.last_clicked_price is None:
+            self.last_clicked_price = price
+            self.lbl_base_price.setText(f"기준가: {price:,.2f}")
+            print(f"[PROTECTION] 기준가 설정: {price}")
+            return
+
+        # =========================
+        # 2️⃣ 이후 클릭 → TP / SL 추가
+        # =========================
+        base = self.last_clicked_price
+        side = self.current_position["side"]
+        diff = price - base
+
+        ticks = int(round(abs(diff) / self.tick_size))
+        if ticks <= 0:
+            return
+
+        print(f"[PROTECTION] base={base}, click={price}, ticks={ticks}")
+
+        if side == "LONG":
+            if diff > 0:
+                # 🔼 익절 추가
+                self.chk_tp.setChecked(True)
+                self.sp_tp_ticks.setValue(ticks)
+            else:
+                # 🔽 손절 추가
+                self.chk_sl.setChecked(True)
+                self.sp_sl_ticks.setValue(ticks)
+
+        elif side == "SHORT":
+            if diff < 0:
+                # 🔼 익절 추가
+                self.chk_tp.setChecked(True)
+                self.sp_tp_ticks.setValue(ticks)
+            else:
+                # 🔽 손절 추가
+                self.chk_sl.setChecked(True)
+                self.sp_sl_ticks.setValue(ticks)
+
+        self._recalc()
+
+    def reset_base_price(self):
+        self.last_clicked_price = None
+        self._tp_price = None
+        self._sl_price = None
+
+        self.chk_tp.setChecked(False)
+        self.chk_sl.setChecked(False)
+        self.sp_tp_ticks.setValue(0)
+        self.sp_sl_ticks.setValue(0)
+
+        self.lbl_base_price.setText("기준가: -")
+        self.lbl_tp_price.setText("계산가: -")
+        self.lbl_sl_price.setText("계산가: -")
+
+        self.btn_apply.setEnabled(False)
 
     def _send_protection(self, payload):
         self.order_controller.place_protection_order(payload)

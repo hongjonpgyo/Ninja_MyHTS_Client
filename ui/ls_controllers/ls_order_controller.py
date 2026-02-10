@@ -251,9 +251,6 @@ class OrderController:
 
     async def _protection_worker(self, payload: dict):
         try:
-            print("###############")
-            print(payload)
-            print("###############")
             # 🔑 account_id는 여기서 주입
             payload["account_id"] = self.main.account_id
             payload.setdefault("source", "UI")
@@ -300,7 +297,6 @@ class OrderController:
             print("[Load Protection ERROR]", e)
 
     def _apply_protections_to_ui(self, rows: list[dict]):
-        print("[PROTECTIONS rows sample]", rows[:2])
         # 1️⃣ 보호 패널
         self.main.protection_panel.load_protections(rows)
 

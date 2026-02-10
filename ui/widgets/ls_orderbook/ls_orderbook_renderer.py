@@ -74,6 +74,16 @@ class OrderBookRenderer:
         self.font_mit.setPointSize(14)
         self.font_mit.setBold(True)
 
+        # ---- Protection guide state ----
+        self.base_price: Optional[float] = None
+        self.hover_price: Optional[float] = None
+        self.position_side: Optional[str] = None  # LONG / SHORT
+
+        # ---- Protection guide colors ----
+        self.base_line_bg = QColor(255, 214, 79, 80)  # 기준가 (노랑)
+        self.tp_preview_bg = QColor(46, 204, 113, 60)  # TP 미리보기
+        self.sl_preview_bg = QColor(231, 76, 60, 60)  # SL 미리보기
+
         self._last_rows: List[OrderBookRow] = []
 
     # =================================================
@@ -186,6 +196,25 @@ class OrderBookRenderer:
         elif row.is_sl:
             bg = self.sl_bg
 
+        # -----------------
+        # 🔥 Protection guide (base / hover)
+        # -----------------
+        if self.base_price is not None and row.price == self.base_price:
+            bg = self.base_line_bg
+
+        elif (
+                self.base_price is not None
+                and self.hover_price is not None
+                and row.price == self.hover_price
+                and self.position_side is not None
+        ):
+            diff = row.price - self.base_price
+
+            if self.position_side == "LONG":
+                bg = self.tp_preview_bg if diff > 0 else self.sl_preview_bg
+            else:  # SHORT
+                bg = self.tp_preview_bg if diff < 0 else self.sl_preview_bg
+
         # self._paint_row_bg(r, bg)
         self._paint_price_row_bg(r, bg)
         # 좌/우 영역 가이드 (항상 동일)
@@ -275,6 +304,18 @@ class OrderBookRenderer:
     def _restore_all(self):
         if self._last_rows:
             self.render(self._last_rows)
+
+    def set_position_side(self, side: str):
+        self.position_side = side  # "LONG" | "SHORT"
+
+    def set_base_price(self, price: Optional[float]):
+        self.base_price = price
+        self.hover_price = None
+        self._restore_all()
+
+    def set_hover_price(self, price: Optional[float]):
+        self.hover_price = price
+        self._restore_all()
 
     def _get_item(self, r: int, c: int) -> QTableWidgetItem:
         it = self.table.item(r, c)

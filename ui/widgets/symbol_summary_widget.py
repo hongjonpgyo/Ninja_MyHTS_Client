@@ -77,11 +77,23 @@ class SymbolSummaryWidget(QFrame):
         self._set("시가", row.get("open_p"))
         self._set("고가", row.get("high_p"))
         self._set("저가", row.get("low_p"))
-        self._set("틱가치", row.get("tick_value"))
+
+        fx_rate = global_rates.FX_RATES.get(row.get("crncy_cd"))
+        self._set("환율", self._fmt_fx(row.get("crncy_cd")))
+
+        # 🔥 타입 정리
+        mn_chg_amt_raw = row.get("mn_chg_amt")
+        mn_chg_amt = float(mn_chg_amt_raw) if mn_chg_amt_raw is not None else None
+
+        tick_value_krw = None
+        if mn_chg_amt is not None and fx_rate is not None:
+            tick_value_krw = mn_chg_amt * fx_rate
+
+        self.tick_value_krw = tick_value_krw
 
         self._set(
-            "환율",
-            self._fmt_fx(row.get("crncy_cd"))
+            "틱가치",
+            f"{tick_value_krw:,.0f}원 / 틱" if tick_value_krw is not None else "--"
         )
 
         self._set("만기일", row.get("mrtr_dt"))

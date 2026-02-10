@@ -63,8 +63,6 @@ class PriceStreamWorker(QThread):
                         print("[SSE] bad json:", payload[:200])
                         continue
 
-                    # 🔍 디버그
-                    print("[SSE EVENT]", event.get("event_type"), event.get("symbol"))
                     self.price_received.emit(event)
 
         except Exception as e:

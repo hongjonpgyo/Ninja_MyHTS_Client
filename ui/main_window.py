@@ -147,11 +147,10 @@ class MainWindow(QMainWindow):
         self.price_controller = PriceController(top_bar=self.topBar, watchlist_controller=self.ls_watchlist_controller)
         self.bg_controller = BackgroundController(self, interval=0.5)
 
-        self.orderbook.priceClicked.connect(
-            self.protection_panel.on_price_clicked
-        )
-
+        self.orderbook.priceClicked.connect(self.protection_panel.on_price_clicked)
         self.orderbook.set_order_controller(self.order_controller)
+
+        self.protection_panel.cancelRequested.connect(self.orderbook.clear_base_price_visual)
 
         # -------------------------
         # WS Clients
@@ -272,7 +271,12 @@ class MainWindow(QMainWindow):
 
     def _init_bottom_tabs(self):
         self.positions_table = LSPositionsTable()
+
         self.protection_panel = LSPositionProtectionPanel(order_controller=self.order_controller, parent=self)
+        self.protection_panel.setMinimumHeight(180)
+        self.protection_panel.setMaximumHeight(220)
+        self.protection_panel.on_applied = self._reload_protections
+
         self.positionsLayout.addWidget(self.positions_table)
         self.positionsLayout.addWidget(self.protection_panel)
         self.positions_table.positionSelected.connect(
@@ -280,9 +284,8 @@ class MainWindow(QMainWindow):
             self.on_position_selected
         )
         self.positions_table.setMinimumHeight(125)
-        # protection_panel 생성 직후
-        self.protection_panel.setMinimumHeight(180)
-        self.protection_panel.setMaximumHeight(220)
+
+
 
         self.balance_widget = LSBalanceTable()
         self.accountSummaryLayout.addWidget(self.balance_widget)
@@ -429,9 +432,12 @@ class MainWindow(QMainWindow):
         if hasattr(self, "selected_ls_row"):
             self.symbolSummary.update_ls_symbol(self.selected_ls_row)
 
+        pos = await self.ls_account_api.get_position(self.account_id, symbol)
+        if pos:
+            self.on_position_selected(pos)
+
     def on_price_event(self, event: dict):
         etype = event.get("event_type")
-        print("on_price_event")
         if etype == "PRICE":
             self.on_price_tick(event)
 
@@ -582,7 +588,7 @@ class MainWindow(QMainWindow):
 
         # 🔥 2. 포지션 정보 로드
         self.protection_panel.load_position(enriched)
-
+        self.orderbook.renderer.set_position_side(pos["side"])
         # 🔥 3. 서버에서 보호주문 조회
         self.order_controller.load_protections(pos["symbol"])
 
@@ -786,6 +792,11 @@ class MainWindow(QMainWindow):
         exec_type = event.get("exec_type")
         if exec_type == "TRADE":
             self.time_sales_controller.on_trade(event)
+            # 🔥 0.8초 후 계좌 재조회
+            QTimer.singleShot(
+                800,
+                lambda: self.enqueue_async(self.fetch_account_state())
+            )
         elif exec_type == "STATUS":
             self.reservation_controller.on_status_event(event)
 
@@ -842,6 +853,9 @@ class MainWindow(QMainWindow):
             self._apply_favorites_ui()
         except Exception as e:
             print("[Favorite] load failed:", e)
+
+    def _reload_protections(self, symbol: str):
+        self.order_controller.load_protections(symbol)
 
     # ui/main_window.py
 
