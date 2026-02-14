@@ -92,4 +92,10 @@ def fmt_fx(rate: float | None, currency: str) -> str:
 
     return f"{value:,}원({currency})"
 
+def format_date(date_str: str | None) -> str:
+    if not date_str or len(date_str) != 8:
+        return "-"
+    return datetime.strptime(date_str, "%Y%m%d").strftime("%Y-%m-%d")
+
+
 

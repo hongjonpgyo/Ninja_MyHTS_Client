@@ -3,11 +3,13 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor, QFont
 from datetime import datetime
 
+from ui.utils.time_utils import to_kst_str
+
 
 class TimeSalesController:
     def __init__(self, table):
         self.table = table
-        self.max_rows = 200
+        self.max_rows = 50
 
         self.bold_font = QFont()
         self.bold_font.setBold(True)
@@ -38,7 +40,7 @@ class TimeSalesController:
     # -------------------------------------------------
     def on_trade(self, trade: dict):
         """
-        trade (SSE event) = {
+        trade = {
             symbol,
             side,
             price,
@@ -49,23 +51,24 @@ class TimeSalesController:
         }
         """
 
-        # 최신 체결을 위에
+        # 최신 체결을 위에 추가
         self.table.insertRow(0)
 
         # -------------------------
-        # Time (executed_at → HH:MM:SS)
+        # Time formatting
         # -------------------------
         ts = trade.get("executed_at")
         try:
             if isinstance(ts, str):
-                dt = datetime.fromisoformat(ts)
-                time_str = dt.strftime("%H:%M:%S")
+                # dt = datetime.fromisoformat(ts)
+                # time_str = dt.strftime("%H:%M:%S")
+                time_str = to_kst_str(ts, "%H:%M:%S")
             else:
                 time_str = "--:--:--"
         except Exception:
             time_str = "--:--:--"
 
-        price = trade.get("price", 0)
+        price = float(trade.get("price", 0))
         qty = trade.get("qty", 0)
         side = trade.get("side", "")
 
@@ -75,22 +78,25 @@ class TimeSalesController:
         item_time = QTableWidgetItem(time_str)
         item_price = QTableWidgetItem(f"{price:,.2f}")
         item_qty = QTableWidgetItem(f"{qty:g}")
-        item_side = QTableWidgetItem(side)
+        item_side = QTableWidgetItem("매수" if side == "BUY" else "매도")
 
+        # 기본 속성 설정
         for it in (item_time, item_price, item_qty, item_side):
-            it.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            it.setTextAlignment(
+                int(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+            )
             it.setFlags(it.flags() & ~Qt.ItemFlag.ItemIsEditable)
             it.setBackground(QColor("#232323"))
 
         # -------------------------
-        # 색상 / 강조
+        # 색상 설정
         # -------------------------
         if side == "BUY":
             fg = QColor("#2ecc71")
-            bg = QColor(46, 204, 113, 35)
+            flash_bg = QColor(46, 204, 113, 60)
         else:
             fg = QColor("#e74c3c")
-            bg = QColor(231, 76, 60, 35)
+            flash_bg = QColor(231, 76, 60, 60)
 
         item_price.setForeground(fg)
         item_price.setFont(self.bold_font)
@@ -100,9 +106,10 @@ class TimeSalesController:
 
         item_qty.setForeground(QColor("#dddddd"))
 
-        # 행 배경 강조
-        for it in (item_time, item_price, item_qty, item_side):
-            it.setBackground(bg)
+        # 하이라이트 적용
+        highlight_items = [item_time, item_price, item_qty, item_side]
+        for it in highlight_items:
+            it.setBackground(flash_bg)
 
         # -------------------------
         # 테이블 삽입
@@ -113,9 +120,12 @@ class TimeSalesController:
         self.table.setItem(0, 3, item_side)
 
         # -------------------------
-        # 하이라이트 페이드
+        # 안전한 하이라이트 복구
         # -------------------------
-        QTimer.singleShot(250, lambda: self._clear_highlight(0))
+        QTimer.singleShot(
+            400,
+            lambda items=highlight_items: self._clear_highlight_items(items)
+        )
 
         # -------------------------
         # Row 제한
@@ -124,8 +134,7 @@ class TimeSalesController:
             self.table.removeRow(self.table.rowCount() - 1)
 
     # -------------------------------------------------
-    def _clear_highlight(self, row):
-        for col in range(self.table.columnCount()):
-            item = self.table.item(row, col)
+    def _clear_highlight_items(self, items):
+        for item in items:
             if item:
                 item.setBackground(QColor("#232323"))

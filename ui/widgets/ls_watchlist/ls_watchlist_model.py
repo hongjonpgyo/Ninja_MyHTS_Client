@@ -89,7 +89,9 @@ class LSWatchListModel(QAbstractTableModel):
         # 가운데 정렬
         if role == Qt.ItemDataRole.TextAlignmentRole:
             if col in (self.COL_PRICE, self.COL_CHANGE, self.COL_FAV):
-                return Qt.AlignmentFlag.AlignCenter
+                return int(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+            else:
+                return None
 
         return None
 

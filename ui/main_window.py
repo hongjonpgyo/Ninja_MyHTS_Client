@@ -87,7 +87,7 @@ class MainWindow(QMainWindow):
 
         self.user = None
         self.account_id = None
-        self.current_symbol = "HSIF26"
+        self.current_symbol = "HSIG26"
         self.running = True
         self._fetching_open_orders = False
         self.selected_ls_row = None
@@ -110,6 +110,8 @@ class MainWindow(QMainWindow):
         self.position_api = PositionApi(self.api)
         self.order_api = LSOrderApi(self.api)
 
+        self._processed_exec_ids = set()
+
         # -------------------------
         # Clock
         # -------------------------
@@ -128,6 +130,8 @@ class MainWindow(QMainWindow):
         self.clockLayout.addWidget(self.labelClock)
         self.clockLayout.addSpacing(6)
         self.clockLayout.addWidget(self.chkAutoCenter)
+
+        self._market_lock = False
 
         # -------------------------
         # UI Components
@@ -276,6 +280,7 @@ class MainWindow(QMainWindow):
         self.protection_panel.setMinimumHeight(180)
         self.protection_panel.setMaximumHeight(220)
         self.protection_panel.on_applied = self._reload_protections
+        self.protection_panel.on_cleared = self._reload_protections
 
         self.positionsLayout.addWidget(self.positions_table)
         self.positionsLayout.addWidget(self.protection_panel)
@@ -337,8 +342,12 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(0, lambda: func(*args))
 
     def enqueue_async(self, coro):
-        if coro and asyncio.iscoroutine(coro):
-            self._queue.put_nowait(coro)
+        if coro is None:
+            return
+        if not asyncio.iscoroutine(coro):
+            print("[enqueue_async] NOT coroutine:", type(coro), coro)
+            return
+        self._queue.put_nowait(coro)
 
     async def _queue_worker(self):
         while True:
@@ -348,7 +357,9 @@ class MainWindow(QMainWindow):
             try:
                 await coro
             except Exception as e:
-                print("[QUEUE ERROR]", e)
+                print("[QUEUE ERROR]", type(e), e)
+                import traceback
+                traceback.print_exc()
             finally:
                 self._queue.task_done()
 
@@ -395,12 +406,59 @@ class MainWindow(QMainWindow):
             self.reservationWidget,
             self.api,
             self.account_id,
+            on_protection_changed=self.on_protection_changed,
         )
         self.enqueue_async(self.reservation_controller.refresh())
         self.enqueue_async(self._load_initial_executions())
         self.enqueue_async(self.init_my_order_store())
+        self.enqueue_async(self._init_after_login())
 
         self.show()
+
+    async def _init_after_login(self):
+        symbol = await self.decide_initial_symbol()
+
+        if symbol:
+            await self.change_symbol(symbol)
+
+        row = self.ls_watchlist_controller.select_symbol(symbol)
+
+        if row:
+            self.selected_ls_row = row
+            self.symbolSummary.update_ls_symbol(row)
+
+
+    async def decide_initial_symbol(self) -> str:
+        """
+        로그인 직후 current_symbol 결정 로직
+        우선순위:
+        1) 보유 포지션
+        2) 최근 체결
+        3) 즐겨찾기
+        4) 기본 HSIF26
+        """
+
+        try:
+            # 1️⃣ 포지션
+            positions = await self.ls_account_api.get_positions(self.account_id)
+            if positions:
+                return positions[0]["symbol"]
+
+            # 2️⃣ 최근 체결
+            executions = await self.api.get_executions(self.account_id)
+            if executions:
+                return executions[0]["symbol"]
+
+            # 3️⃣ 즐겨찾기
+            favorites = await self.api.get("/ls/futures/favorites")
+            if favorites:
+                return favorites[0]["symbol_code"]
+
+        except Exception as e:
+            print("[decide_initial_symbol ERROR]", e)
+
+        # 4️⃣ fallback
+        return "HSIG26"
 
     # =====================================================
     # WATCHLIST / SYMBOL
@@ -414,6 +472,11 @@ class MainWindow(QMainWindow):
         symbol = symbol.upper()
 
         self.current_symbol = symbol
+
+        row = self.ls_watchlist_controller.select_symbol(symbol)
+        if row:
+            self.selected_ls_row = row
+            self.symbolSummary.update_ls_symbol(row)
 
         # OrderBook View (로컬 UI)
         self.orderbook.set_symbol(symbol, tick_size=tick_size)
@@ -468,6 +531,9 @@ class MainWindow(QMainWindow):
     def on_auto_center_changed(self, state: int):
         enabled = (state == Qt.CheckState.Checked.value)
         self.orderbook.auto_center_enabled = enabled
+
+    def on_protection_changed(self, symbol: str):
+        self.order_controller.load_protections(symbol)
 
     async def _close_current_symbol_worker(self):
         symbol = self.current_symbol
@@ -699,7 +765,29 @@ class MainWindow(QMainWindow):
         if not data:
             return
 
-        self.executions_table.append_row(data)
+        exec_id = data.get("order_id")
+        if exec_id in self._processed_exec_ids:
+            return
+
+        self._processed_exec_ids.add(exec_id)
+
+        # 🔥 여기 수정
+        ts = data.get("executed_at") or data.get("created_at")
+        if not ts:
+            return
+
+        trade_time = datetime.fromisoformat(ts.replace("Z", ""))
+
+        self.tradesTable.append_trade(
+            symbol=data["symbol"],
+            side=data["side"],
+            qty=data["qty"],
+            price=data["price"],
+            status="완료",
+            trade_time=trade_time,
+            exec_id=exec_id,
+        )
+
         self.show_toast(
             f"{data.get('symbol')} {data.get('side')} {data.get('qty')} @ {data.get('price')} 체결"
         )
@@ -760,26 +848,26 @@ class MainWindow(QMainWindow):
         bar.setContentsMargins(6, 6, 6, 6)
         bar.setSpacing(8)
 
-        self.btnTradeDeleteSelected = QPushButton("선택삭제")
-        self.btnTradeDeleteAll = QPushButton("전체삭제")
-
-        self.btnTradeDeleteSelected.clicked.connect(
-            self.tradesTable.delete_selected_trades
-        )
-        self.btnTradeDeleteAll.clicked.connect(
-            self.tradesTable.clear_all_trades
-        )
-
-        for btn in (
-                self.btnTradeDeleteSelected,
-                self.btnTradeDeleteAll,
-        ):
-            btn.setFixedHeight(28)
-            btn.setCursor(Qt.CursorShape.PointingHandCursor)
-
-        bar.addStretch()
-        bar.addWidget(self.btnTradeDeleteSelected)
-        bar.addWidget(self.btnTradeDeleteAll)
+        # self.btnTradeDeleteSelected = QPushButton("선택삭제")
+        # self.btnTradeDeleteAll = QPushButton("전체삭제")
+        #
+        # self.btnTradeDeleteSelected.clicked.connect(
+        #     self.tradesTable.delete_selected_trades
+        # )
+        # self.btnTradeDeleteAll.clicked.connect(
+        #     self.tradesTable.clear_all_trades
+        # )
+        #
+        # for btn in (
+        #         self.btnTradeDeleteSelected,
+        #         self.btnTradeDeleteAll,
+        # ):
+        #     btn.setFixedHeight(28)
+        #     btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        #
+        # bar.addStretch()
+        # bar.addWidget(self.btnTradeDeleteSelected)
+        # bar.addWidget(self.btnTradeDeleteAll)
 
         self.tradesTabLayout.addWidget(self.tradesActionBar)
         self.tradesTabLayout.addWidget(self.tradesTable)
@@ -789,9 +877,12 @@ class MainWindow(QMainWindow):
         await self.api.cancel_reservations(scope="SYMBOL", symbol=symbol)
 
     def on_execution_received(self, event: dict):
-        exec_type = event.get("exec_type")
-        if exec_type == "TRADE":
+        print("[EXEC EVT", event)
+
+        exec_type = (event.get("exec_type") or "").upper()
+        if exec_type in ("TRADE", "FILL", "EXECUTED", "PARTIAL"):
             self.time_sales_controller.on_trade(event)
+            self.safe_ui_handle_execution(event)
             # 🔥 0.8초 후 계좌 재조회
             QTimer.singleShot(
                 800,
@@ -857,9 +948,12 @@ class MainWindow(QMainWindow):
     def _reload_protections(self, symbol: str):
         self.order_controller.load_protections(symbol)
 
-    # ui/main_window.py
-
     def _place_market(self, side: str):
+        if self._market_lock:
+            return
+
+        self._market_lock = True
+
         if not self.current_symbol:
             return
 
@@ -873,6 +967,10 @@ class MainWindow(QMainWindow):
             side=side,
             qty=qty,
         )
+        QTimer.singleShot(
+            300,
+            lambda: setattr(self, "_market_lock", False)
+        )
 
         # UX 피드백 (선택)
         if hasattr(self, "orderbook"):
@@ -881,15 +979,43 @@ class MainWindow(QMainWindow):
                 side=side
             )
 
+    async def _reload_executions_fallback(self):
+        try:
+            executions = await self.api.get_executions(self.account_id)
+
+            for exec in reversed(executions):
+                exec_id = (exec.get("order_id"), exec.get("executed_at"))
+
+                if exec_id in self._processed_exec_ids:
+                    continue
+
+                self._processed_exec_ids.add(exec_id)
+
+                self.tradesTable.append_trade(
+                    symbol=exec["symbol"],
+                    side=exec["side"],
+                    qty=exec["qty"],
+                    price=exec["price"],
+                    status="완료" if exec["exec_type"] == "TRADE" else "취소",
+                    trade_time=datetime.fromisoformat(exec["created_at"]),
+                    exec_id=exec_id
+                )
+
+        except Exception as e:
+            print("[fallback executions error]", e)
+
     # =====================================================
     # CLOCK
     # =====================================================
     def _on_clock_tick(self):
-        self.enqueue_async(self.update_ls_clock())
+        asyncio.create_task(self.update_ls_clock())
 
     async def update_ls_clock(self):
         try:
             data = await self.ls_api.get("/ls/futures/time")
+            if not data:
+                return
+
             t = data.get("ls_time")
             if isinstance(t, str) and len(t) >= 6:
                 self._last_ls_time = f"{t[:2]}:{t[2:4]}:{t[4:6]}"
@@ -921,6 +1047,7 @@ class MainWindow(QMainWindow):
                 await self.exec_ws.stop()
             if self.account_ws:
                 await self.account_ws.stop()
+
             # if self.trade_ws:
             #     await self.trade_ws.stop()
             self._queue.put_nowait(None)

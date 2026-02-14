@@ -68,11 +68,12 @@ def main():
         login_window = LoginWindow(api_client, on_login_success)
         login_window.show()
 
-    def on_login_success(token, user, account_id):
+    def on_login_success(token, user, account_id, email):
         nonlocal main_window, login_window
 
         main_window = MainWindow(api_client, show_login_window)
         main_window.init_user(token, user, account_id)
+        main_window.setWindowTitle(f"HTS Client - {email}")
         main_window.show()
 
         if login_window:

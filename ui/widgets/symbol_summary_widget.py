@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 import core.global_rates as global_rates
+from ui.utils.formatter import format_date
 
 
 class SymbolSummaryWidget(QFrame):
@@ -73,6 +74,9 @@ class SymbolSummaryWidget(QFrame):
     # DATA
     # =====================================================
     def update_ls_symbol(self, row: dict):
+        if not row:
+            return
+
         self._set("전일", row.get("close_p"))
         self._set("시가", row.get("open_p"))
         self._set("고가", row.get("high_p"))
@@ -96,7 +100,7 @@ class SymbolSummaryWidget(QFrame):
             f"{tick_value_krw:,.0f}원 / 틱" if tick_value_krw is not None else "--"
         )
 
-        self._set("만기일", row.get("mrtr_dt"))
+        self._set("만기일", format_date(row.get("mrtr_dt")))
         self._set(
             "잔존일수",
             f"{row['remain_days']}일" if row.get("remain_days") is not None else "--"

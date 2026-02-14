@@ -202,10 +202,10 @@ class LSPositionProtectionPanel(QWidget):
         self.lbl_symbol.setText(f"종목: {pos['symbol']}")
 
         if pos["side"] == "LONG":
-            self.lbl_side.setText("방향: 롱")
+            self.lbl_side.setText("포지션: 매수")
             self.lbl_side.setStyleSheet("color:#2ecc71;")
         else:
-            self.lbl_side.setText("방향: 숏")
+            self.lbl_side.setText("포지션: 매도")
             self.lbl_side.setStyleSheet("color:#e74c3c;")
 
         self.lbl_qty.setText(f"수량: {pos['qty']}")
@@ -227,7 +227,7 @@ class LSPositionProtectionPanel(QWidget):
         self.setEnabled(False)
 
         self.lbl_symbol.setText("종목: -")
-        self.lbl_side.setText("방향: -")
+        self.lbl_side.setText("포지션: -")
         self.lbl_qty.setText("수량: -")
         self.lbl_avg.setText("평균가: -")
         self.lbl_base_price.setText("기준가: -")
@@ -343,6 +343,10 @@ class LSPositionProtectionPanel(QWidget):
             symbol=self.current_position["symbol"],
         )
 
+        # 🔥 취소 후 즉시 재조회
+        if hasattr(self, "on_cleared"):
+            self.on_cleared(self.current_position["symbol"])
+
     @pyqtSlot(float)
     def on_price_clicked(self, price: float):
         if not self.current_position:
@@ -413,6 +417,20 @@ class LSPositionProtectionPanel(QWidget):
 
     def load_protections(self, rows: list[dict]):
         if not rows:
+            self.chk_tp.setChecked(False)
+            self.chk_sl.setChecked(False)
+            self.sp_tp_ticks.setValue(0)
+            self.sp_sl_ticks.setValue(0)
+
+            self._tp_price = None
+            self._sl_price = None
+
+            self.lbl_tp_price.setText("계산가: -")
+            self.lbl_sl_price.setText("계산가: -")
+
+            self.btn_apply.setText("적용")  # 🔥 핵심
+            self.btn_apply.setEnabled(False)
+
             return
 
         # 🔥 기준가 방어 (핵심)

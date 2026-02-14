@@ -43,6 +43,7 @@ class LSWatchListController:
     # -------------------------------------------------
     def _init_table(self):
         headers = ["★", "종목명", "코드", "현재가", "대비"]
+        self._symbol_row_map = {}  # 🔥 핵심
 
         t = self.table
         t.setColumnCount(len(headers))
@@ -69,12 +70,21 @@ class LSWatchListController:
     # -------------------------------------------------
     def load_rows(self, rows: list[dict]):
         self.table.setRowCount(0)
-        self._symbol_row_map = {}  # 🔥 핵심
 
         for row in rows:
             r = self.table.rowCount()
             self._append_row(row)
             self._symbol_row_map[row["symbol"]] = r
+
+    def select_symbol(self, symbol: str):
+        if symbol not in self._symbol_row_map:
+            return None
+
+        row_idx = self._symbol_row_map[symbol]
+        self.table.selectRow(row_idx)
+
+        row_data = self.table.property(f"_row_{row_idx}")
+        return row_data
 
     # -------------------------------------------------
     # Internal
@@ -86,11 +96,16 @@ class LSWatchListController:
 
         def set_item(col, text, align, color=None, bold=False):
             item = QTableWidgetItem(text)
-            item.setTextAlignment(align)
+
+            item.setTextAlignment(
+                int(align | Qt.AlignmentFlag.AlignLeft)
+            )
+
             if color:
                 item.setForeground(color)
             if bold:
                 item.setFont(self.bold_font)
+
             self.table.setItem(r, col, item)
 
         symbol = row.get("symbol", "")
@@ -118,7 +133,7 @@ class LSWatchListController:
         set_item(
             self.COL_SYMBOL,
             symbol,
-            Qt.AlignmentFlag.AlignCenter,
+            Qt.AlignmentFlag.AlignLeft,
             QColor("#bbbbbb"),
         )
 
@@ -260,7 +275,7 @@ class LSWatchListController:
         ⭐ 컬럼 표시를 즉시 갱신한다.
         """
         self.favorites = set(favorites)
-        print(self.favorites)
+
         for row in range(self.table.rowCount()):
             symbol_item = self.table.item(row, self.COL_SYMBOL)
             if not symbol_item:

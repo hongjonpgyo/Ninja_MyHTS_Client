@@ -183,7 +183,7 @@ class OrderController:
         try:
             await self.api.post("/ls/futures/orders", json=payload)
 
-            self.main.enqueue_async(self.main.fetch_open_orders)
+            self.main.enqueue_async(self.main.fetch_open_orders())
 
             self.main.safe_ui(
                 self.main.show_toast,
@@ -269,9 +269,10 @@ class OrderController:
             )
 
             self.main.safe_ui(
-                self.main.protection_panel.load_protections,
+                self._apply_protections_to_ui,
                 rows,
             )
+
 
         except Exception as e:
             print("[Protection ERROR]", e)
@@ -337,14 +338,7 @@ class OrderController:
                 }
             )
 
-            # UI 반영
-            self.main.safe_ui(
-                self.main.protection_panel.clear
-            )
-            self.main.safe_ui(
-                self.main.orderbook.set_protections,
-                []
-            )
+            await self._load_protections_worker(symbol)
 
         except Exception as e:
             print("[Cancel Protection ERROR]", e)

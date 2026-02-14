@@ -26,7 +26,7 @@ class LSWatchListView(QTableView):
         self.setColumnWidth(model.COL_PRICE, 100)
         self.setColumnWidth(model.COL_CHANGE, 90)
 
-        self.sortByColumn(model.COL_NAME, Qt.SortOrder.AscendingOrder)
+        # self.setSortingEnabled(True)
 
     def _on_click(self, index: QModelIndex):
         model: LSWatchListModel = self.model()

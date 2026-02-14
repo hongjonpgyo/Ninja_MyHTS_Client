@@ -69,7 +69,7 @@ class LoginWindow(QDialog):
                 # print(token, user, account_id)
                 # 🔥 MainWindow 열기
                 if self.on_login_success:
-                    self.on_login_success(token, user, account_id)
+                    self.on_login_success(token, user, account_id, email)
                 self.accept()
                 self.close()
             else:

@@ -12,6 +12,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont
 
 from ui.utils.ls_symbol_name import display_symbol_name
+from ui.utils.time_utils import to_kst
 
 
 class ReservationWidget(QWidget):
@@ -91,7 +92,7 @@ class ReservationWidget(QWidget):
 
         display_nm, full_nm = display_symbol_name(r["symbol"])
 
-        self.table.setItem(row, self.COL_TIME, self._time_item(r["created_at"]))
+        self.table.setItem(row, self.COL_TIME, self._time_item(to_kst(r["created_at"])))
         self.table.setItem(row, self.COL_SYMBOL, self._center_item(display_nm, bold=True))
         self.table.setItem(row, self.COL_SIDE, self._side_item(r["side"]))
         self.table.setItem(row, self.COL_QTY, self._center_item(str(int(r["qty"])), bold=True))

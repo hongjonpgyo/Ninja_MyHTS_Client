@@ -99,7 +99,7 @@ class TopBarWidget(QFrame):
         # ===============================
         root.addLayout(left)
         root.addStretch()
-        root.addLayout(mid)
+        # root.addLayout(mid)
         root.addStretch()
         root.addLayout(right)
 

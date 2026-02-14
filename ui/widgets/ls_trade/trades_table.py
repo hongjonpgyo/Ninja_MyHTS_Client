@@ -4,6 +4,7 @@ from PyQt6.QtGui import QColor, QFont
 from datetime import datetime
 
 from ui.utils.ls_symbol_name import display_symbol_name
+from ui.utils.time_utils import to_kst
 
 
 class TradesTable(QTableWidget):
@@ -27,6 +28,7 @@ class TradesTable(QTableWidget):
 
     def __init__(self, parent=None):
         super().__init__(0, len(self.HEADERS), parent)
+        self._exec_ids = set()
 
         self.setHorizontalHeaderLabels(self.HEADERS)
         self._init_style()
@@ -52,16 +54,22 @@ class TradesTable(QTableWidget):
             price: float,
             status: str,
             trade_time: datetime,
+            exec_id: int | None = None,  # 🔥 추가
     ):
+        if exec_id:
+            if exec_id in self._exec_ids:
+                return
+            self._exec_ids.add(exec_id)
+
         row = 0
         self.insertRow(row)
 
         # 시간 (날짜 + 시간)
-
+        dt = to_kst(trade_time)
         self._set_item(
             row,
             self.COL_TIME,
-            trade_time.strftime("%Y-%m-%d %H:%M:%S"),
+            dt.strftime("%Y-%m-%d %H:%M:%S") if dt else "--",
             align=Qt.AlignmentFlag.AlignCenter
         )
 

@@ -2,6 +2,7 @@ from PyQt6 import QtWidgets, QtCore, QtGui
 from PyQt6.QtWidgets import QTableWidgetItem, QAbstractItemView, QHeaderView
 from ui.utils.formatter import fmt_time
 from ui.utils.ls_symbol_name import display_symbol_name
+from ui.utils.time_utils import to_kst_str
 
 
 class OpenOrdersWidget(QtWidgets.QWidget):
@@ -251,16 +252,18 @@ class OpenOrdersWidget(QtWidgets.QWidget):
         for r, o in enumerate(orders):
             symbol = o.get("symbol", "")
             side = str(o.get("side", "")).upper()
+            side_kor = "매수" if side == "BUY" else "매도" if side == "SELL" else side
+
             price = o.get("price", "")
             qty = o.get("qty", "")
-            time = fmt_time(o.get("created_at"))
+            time = to_kst_str(o.get("created_at"), "%H:%M:%S")
             oid = o.get("order_id", "")
             status = o.get("status", "OPEN")
 
             display_nm, full_nm = display_symbol_name(symbol)
 
             self._set_item(r, 0, display_nm)
-            side_item = self._set_item(r, 1, side)
+            side_item = self._set_item(r, 1, side_kor)
             price_item = self._set_item(r, 2, price)
             self._set_item(r, 3, qty)
             self._set_item(r, 4, time)
