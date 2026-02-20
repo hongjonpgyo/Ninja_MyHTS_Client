@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1470</width>
+    <height>894</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>HTS Client</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="rootLayout">
+    <item>
+     <layout class="QHBoxLayout" name="topBarLayout"/>
+    </item>
+    <item>
+     <widget class="QSplitter" name="splitterRoot">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <widget class="QWidget" name="leftWidget">
+       <layout class="QVBoxLayout" name="leftLayout">
+        <item>
+         <widget class="QSplitter" name="splitterLeft">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <widget class="QSplitter" name="splitterTop">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+          </widget>
+          <widget class="QFrame" name="orderbookContainer">
+           <layout class="QVBoxLayout" name="orderbookLayout">
+            <item>
+             <widget class="QFrame" name="orderbookControlBar">
+              <property name="font">
+               <font>
+                <pointsize>19</pointsize>
+               </font>
+              </property>
+              <layout class="QVBoxLayout" name="orderbookControlLayout">
+               <property name="spacing">
+                <number>5</number>
+               </property>
+               <property name="rightMargin">
+                <number>5</number>
+               </property>
+               <item>
+                <layout class="QGridLayout" name="accountSummaryLayout"/>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="middleLayout">
+                 <item>
+                  <widget class="QPushButton" name="btnMarketSell">
+                   <property name="font">
+                    <font>
+                     <pointsize>11</pointsize>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>시장가매도(F4)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="btnCloseAll">
+                   <property name="font">
+                    <font>
+                     <pointsize>11</pointsize>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>전정목청산(F5)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer>
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>13</width>
+                     <height>13</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="clockLayout">
+                   <item>
+                    <widget class="QLabel" name="labelClock">
+                     <property name="text">
+                      <string>--:--:--</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <spacer>
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>13</width>
+                     <height>13</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="btnCloseSymbol">
+                   <property name="font">
+                    <font>
+                     <pointsize>11</pointsize>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>현종목청산(F8)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="btnMarketBuy">
+                   <property name="font">
+                    <font>
+                     <pointsize>11</pointsize>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>시장가매수(F9)</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QTableWidget" name="tableOrderbook">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777208</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QTabWidget" name="bottomTabs">
+           <property name="tabPosition">
+            <enum>QTabWidget::North</enum>
+           </property>
+           <property name="currentIndex">
+            <number>0</number>
+           </property>
+           <widget class="QWidget" name="tabPositions">
+            <property name="maximumSize">
+             <size>
+              <width>16777208</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="baseSize">
+             <size>
+              <width>0</width>
+              <height>6</height>
+             </size>
+            </property>
+            <attribute name="title">
+             <string>전체</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="positionsLayout"/>
+           </widget>
+           <widget class="QWidget" name="tabAccount">
+            <attribute name="title">
+             <string>미체결</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="accountLayout"/>
+           </widget>
+           <widget class="QWidget" name="tabOpenOrders">
+            <attribute name="title">
+             <string>예약</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="reservationLayout"/>
+           </widget>
+           <widget class="QWidget" name="tabTrades">
+            <attribute name="title">
+             <string>체결내역</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="tradesTabLayout"/>
+           </widget>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QFrame" name="rightPanel">
+       <layout class="QVBoxLayout" name="rightPanelLayout">
+        <item>
+         <widget class="QTableWidget" name="tableWatchlist"/>
+        </item>
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>체결현황</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="tableTimeSales"/>
+        </item>
+       </layout>
+       <widget class="QFrame" name="orderPanelBody">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>24</width>
+          <height>24</height>
+         </rect>
+        </property>
+        <property name="visible">
+         <bool>false</bool>
+        </property>
+        <layout class="QVBoxLayout" name="orderPanelBodyLayout"/>
+       </widget>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
