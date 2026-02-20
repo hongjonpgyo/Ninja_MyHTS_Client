@@ -6,7 +6,7 @@ from PyQt6.QtGui import QColor, QBrush
 
 from services.ls.ls_orderbook_engine import OrderBookEngine, OrderBookRow
 from ui.widgets.ls_orderbook.ls_orderbook_renderer import OrderBookRenderer
-from config.settings import ORDERBOOK_DEPTH
+from config.ls_settings import ORDERBOOK_DEPTH
 
 class LSOrderBookWidget(QWidget):
     priceClicked = pyqtSignal(float)

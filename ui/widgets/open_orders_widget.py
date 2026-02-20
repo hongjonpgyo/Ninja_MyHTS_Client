@@ -20,6 +20,26 @@ class OpenOrdersWidget(QtWidgets.QWidget):
         root.setSpacing(6)
 
         # =================================================
+        # 🔹 TOP ACTION BUTTONS (카드 위)
+        # =================================================
+        topBtns = QtWidgets.QHBoxLayout()
+        topBtns.addStretch()
+
+        self.btnCancelSelected = QtWidgets.QPushButton("선택취소")
+        self.btnCancelAll = QtWidgets.QPushButton("전체취소")
+
+        self.btnCancelSelected.setFixedHeight(22)
+        self.btnCancelAll.setFixedHeight(22)
+
+        self.btnCancelSelected.setObjectName("btnSmall")
+        self.btnCancelAll.setObjectName("btnSmall")
+
+        topBtns.addWidget(self.btnCancelSelected)
+        topBtns.addWidget(self.btnCancelAll)
+
+        root.addLayout(topBtns)  # 🔥 summaryBar 위에 추가
+
+        # =================================================
         # 🔹 SUMMARY STRIP (제목형)
         # =================================================
         self.summaryBar = QtWidgets.QWidget()
@@ -49,9 +69,11 @@ class OpenOrdersWidget(QtWidgets.QWidget):
         summary_layout.setContentsMargins(12, 6, 12, 6)
         summary_layout.addLayout(title_layout)
         summary_layout.addStretch()
+
+        summary_layout.addSpacing(10)
         summary_layout.addWidget(self.lblTotal)
 
-        root.addWidget(self.summaryBar)
+        # root.addWidget(self.summaryBar)
 
         # =================================================
         # 🔹 MAIN AREA (Table + Guide Panel)
@@ -92,27 +114,6 @@ class OpenOrdersWidget(QtWidgets.QWidget):
             QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
 
-        # self.table.setStyleSheet("""
-        # QTableWidget {
-        #     background-color: #1e1e1e;
-        #     border: none;
-        # }
-        # QTableWidget::item {
-        #     padding: 6px;
-        # }
-        # QTableWidget::item:hover {
-        #     background-color: #2a2a2a;
-        # }
-        # QTableWidget::item:selected {
-        #     background-color: #1f4f99;
-        # }
-        # QHeaderView::section {
-        #     background-color: #2b2b2b;
-        #     color: white;
-        #     padding: 6px;
-        #     border: none;
-        # }
-        # """)
 
         main.addWidget(self.table, 1)
 
@@ -128,10 +129,6 @@ class OpenOrdersWidget(QtWidgets.QWidget):
         }
         """)
 
-        guide_layout = QtWidgets.QVBoxLayout(guide)
-        guide_layout.setContentsMargins(10, 10, 10, 10)
-        guide_layout.setSpacing(10)
-
         lblGuideTitle = QtWidgets.QLabel("Open Orders Guide")
         lblGuideTitle.setStyleSheet("color:#ffffff; font-size:12px; font-weight:600;")
 
@@ -142,12 +139,6 @@ class OpenOrdersWidget(QtWidgets.QWidget):
         )
         lblGuideText.setStyleSheet("color:#aaaaaa; font-size:11px;")
         lblGuideText.setWordWrap(True)
-
-        guide_layout.addWidget(lblGuideTitle)
-        guide_layout.addWidget(lblGuideText)
-        guide_layout.addStretch()
-
-        main.addWidget(guide)
 
         root.addLayout(main)
 
@@ -175,43 +166,16 @@ class OpenOrdersWidget(QtWidgets.QWidget):
         }
         """)
 
-        # self.btnRefresh.setStyleSheet("""
-        # QPushButton {
-        #     background-color: #444444;
-        #     color: white;
-        #     padding: 8px;
-        #     border-radius: 6px;
-        # }
-        # QPushButton:hover {
-        #     background-color: #555555;
-        # }
-        # """)
 
         btns.addWidget(self.btnCancel)
         # btns.addWidget(self.btnRefresh)
-        root.addLayout(btns)
+        # root.addLayout(btns)
 
         # =================================================
         # Signals / Timer
         # =================================================
         # self.btnRefresh.clicked.connect(self.refresh)
-        self.btnCancel.clicked.connect(self.cancel_selected_orders)
-
-        # self.timer = QtCore.QTimer(self)
-        # # self.timer.timeout.connect(self.refresh)
-        # self.timer.start(1000)
-
-        # self.refresh()
-
-    # -------------------------------------------------
-    # def refresh(self):
-    #     try:
-    #         orders = self.order_api.get_open_orders(self.account_id)
-    #         if isinstance(orders, list):
-    #             self._update_summary(orders)
-    #             self.update_table(orders)
-    #     except Exception as e:
-    #         print("[OpenOrdersWidget] refresh error:", e)
+        self.btnCancelSelected.clicked.connect(self.cancel_selected_orders)
 
     # -------------------------------------------------
     def _update_summary(self, orders):

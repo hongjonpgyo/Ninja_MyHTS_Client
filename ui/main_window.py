@@ -58,7 +58,7 @@ from ui.widgets.top_bar import TopBarWidget
 from ui.utils.formatter import fmt_money, fmt_pnl, fmt_rate
 from ui.workers.execution_stream_worker import ExecutionStreamWorker
 
-from config.settings import LS_BASE_URL
+from config.ls_settings import LS_BASE_URL
 from ui.workers.price_stream_worker import PriceStreamWorker
 
 FIXED_WIDTH = 1490
@@ -226,7 +226,7 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("F5"), self, self.on_close_all_positions)
 
     def on_tab_changed(self, idx):
-        print('tabName : ' + self.bottomTabs.widget(idx).objectName())
+        # print('tabName : ' + self.bottomTabs.widget(idx).objectName())
 
         if self.bottomTabs.widget(idx).objectName() == "tabOpenOrders":
             asyncio.create_task(self.reload_reservations())
@@ -809,7 +809,7 @@ class MainWindow(QMainWindow):
         self.btnSellReserveCancel = QPushButton("매도예약취소")
         self.btnBuyReserveCancel = QPushButton("매수예약취소")
         self.btnSymbolCancel = QPushButton("종목취소")
-        self.btnAllCancel = QPushButton("일괄취소")
+        self.btnAllCancel = QPushButton("전체취소")
 
         self.btnAllCancel.clicked.connect(self.cancel_all_reservations)
         self.btnSymbolCancel.clicked.connect(self.cancel_symbol_reservations)

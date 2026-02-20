@@ -4,12 +4,12 @@ from PyQt6.QtCore import Qt
 
 from ui.settings.trade_setting import OrderClickMode
 from ui.widgets.orderbook_delegate import OrderbookDelegate
-from config.settings import (
+from config.ls_settings import (
     LMT_BUY_COL, LMT_SELL_COL,
     MIT_SELL_COL, MIT_BUY_COL,
     COL_SELL_CNT, COL_BUY_CNT
 )
-from config.settings import ORDERBOOK_DEPTH
+from config.ls_settings import ORDERBOOK_DEPTH
 from ui.widgets.checkbox_header import CheckBoxHeader
 
 class OrderbookWidgetHTS:

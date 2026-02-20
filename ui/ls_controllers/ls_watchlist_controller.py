@@ -42,15 +42,13 @@ class LSWatchListController:
     # Table init
     # -------------------------------------------------
     def _init_table(self):
-        headers = ["★", "종목명", "코드", "현재가", "대비"]
+        headers = ["❤", "종목명", "코드", "현재가", "대비"]
         self._symbol_row_map = {}  # 🔥 핵심
 
         t = self.table
         t.setColumnCount(len(headers))
         t.setHorizontalHeaderLabels(headers)
         t.setRowCount(0)
-
-        t.setColumnWidth(self.COL_FAV, 20)
 
         t.verticalHeader().setVisible(False)
         t.setSortingEnabled(False)
@@ -63,7 +61,15 @@ class LSWatchListController:
         t.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         header = t.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        # ⭐ 컬럼은 고정 20px
+        header.setSectionResizeMode(self.COL_FAV, QHeaderView.ResizeMode.Fixed)
+        t.setColumnWidth(self.COL_FAV, 28)
+
+        # 나머지는 Stretch
+        for col in range(t.columnCount()):
+            if col != self.COL_FAV:
+                header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
 
     # -------------------------------------------------
     # Public
@@ -114,7 +120,7 @@ class LSWatchListController:
 
         set_item(
             self.COL_FAV,
-            "★" if symbol in self.favorites else "",
+            "❤" if symbol in self.favorites else "",
             Qt.AlignmentFlag.AlignCenter,
             QColor("#FFD700") if symbol in self.favorites else QColor("#555555"),
         )
@@ -225,7 +231,7 @@ class LSWatchListController:
             self.table.setItem(row, self.COL_FAV, fav_item)
 
         if symbol in self.favorites:
-            fav_item.setText("★")
+            fav_item.setText("❤")
             fav_item.setForeground(QColor("#FFD700"))
         else:
             fav_item.setText("")
@@ -290,6 +296,6 @@ class LSWatchListController:
                 fav_item.setFlags(Qt.ItemFlag.ItemIsEnabled)  # 선택/편집 방지
                 self.table.setItem(row, self.COL_FAV, fav_item)
 
-            fav_item.setText("★" if symbol in self.favorites else "")
+            fav_item.setText("❤" if symbol in self.favorites else "")
 
 

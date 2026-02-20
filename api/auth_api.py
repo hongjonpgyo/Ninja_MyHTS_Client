@@ -1,6 +1,6 @@
 # api/auth_api.py
 import requests
-from config.settings import LS_BASE_URL
+from config.ls_settings import LS_BASE_URL
 
 class AuthApi:
 

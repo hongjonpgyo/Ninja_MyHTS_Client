@@ -3,7 +3,7 @@ import websockets
 import json
 from core.event_bus import event_bus
 from services.data_cache import data_cache
-from config.settings import WS_URL
+from config.ls_settings import WS_URL
 
 class PriceWSClient:
 

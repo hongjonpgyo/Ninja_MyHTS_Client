@@ -1,5 +1,5 @@
 import aiohttp
-from config.settings import REST_URL
+from config.ls_settings import REST_URL
 
 class RestClient:
 

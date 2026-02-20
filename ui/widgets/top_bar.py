@@ -1,6 +1,6 @@
 import webbrowser
 
-from config.settings import DEFAULT_SYMBOLS
+from config.ls_settings import DEFAULT_SYMBOLS
 from PyQt6.QtCore import Qt, QTimer
 from datetime import datetime
 

@@ -3,7 +3,7 @@ import asyncio
 import json
 import ssl
 import websockets
-from config.settings import LS_BASE_URL
+from config.ls_settings import LS_BASE_URL
 
 class ExecutionWSClient:
     def __init__(self, token: str, account_id: int, callback, main_window,

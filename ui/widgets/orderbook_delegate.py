@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QStyledItemDelegate
 from PyQt6.QtGui import QColor, QBrush
 from PyQt6.QtCore import Qt
-from config.settings import LMT_BUY_COL, LMT_SELL_COL, MIT_SELL_COL, MIT_BUY_COL
+from config.ls_settings import LMT_BUY_COL, LMT_SELL_COL, MIT_SELL_COL, MIT_BUY_COL
 
 class OrderbookDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):

@@ -1,5 +1,5 @@
 import requests
-from config.settings import LS_BASE_URL
+from config.ls_settings import LS_BASE_URL
 
 class PositionApi:
     def __init__(self, api_client):
