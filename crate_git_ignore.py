@@ -35,7 +35,6 @@ env/
 *.qmlc
 *.jsc*
 *.qrc~
-*.ui~
 *.pro.user
 *.moc
 

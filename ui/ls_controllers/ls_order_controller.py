@@ -283,6 +283,7 @@ class OrderController:
         )
 
     async def _load_protections_worker(self, symbol: str):
+        print(">>> load_protections_worker 실행")
         try:
             rows = await self.api.get_protections(
                 account_id=self.main.account_id,

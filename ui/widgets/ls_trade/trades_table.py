@@ -34,7 +34,26 @@ class TradesTable(QTableWidget):
         self._init_style()
 
     def _init_style(self):
+        font = QFont()
+        font.setPointSize(10)  # 🔥 원하는 크기 (9~11 추천)
+        font.setBold(False)
+
+        self.setFont(font)
+
+        header = self.horizontalHeader()
+        header.setFont(font)
+
         self.verticalHeader().setVisible(False)
+
+        self.setStyleSheet("""
+                QTableWidget {
+                    font-size: 10pt;
+                }
+                QHeaderView::section {
+                    font-size: 10pt;
+                }
+            """)
+
         self.setShowGrid(False)
 
         self.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)

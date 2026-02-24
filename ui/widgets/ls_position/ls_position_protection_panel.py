@@ -5,6 +5,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QFont
 
+from ui.utils.ls_symbol_name import display_symbol_name
+
+
 class LSPositionProtectionPanel(QWidget):
     cancelRequested = pyqtSignal()
 
@@ -199,7 +202,8 @@ class LSPositionProtectionPanel(QWidget):
         self._on_qty_selected(1)
         self.tick_size = pos.get("price_tick", 1.0)
 
-        self.lbl_symbol.setText(f"종목: {pos['symbol']}")
+        display_nm, full_nm = display_symbol_name(pos['symbol'])
+        self.lbl_symbol.setText(f"종목: {display_nm}")
 
         if pos["side"] == "LONG":
             self.lbl_side.setText("포지션: 매수")
@@ -220,6 +224,7 @@ class LSPositionProtectionPanel(QWidget):
         self.lbl_sl_price.setText("계산가: -")
 
         self._update_apply_state()
+        self.lbl_base_price.setText(f"기준가: {pos['avg_price']:.2f}")
 
     def clear(self):
         self.current_position = None
@@ -239,12 +244,12 @@ class LSPositionProtectionPanel(QWidget):
     # 내부 로직
     # -------------------------------------------------
     def _recalc(self):
-        if not self.current_position or self.last_clicked_price is None:
+        if not self.current_position:
             self._clear_prices()
             return
 
         side = self.current_position["side"]
-        base = self.last_clicked_price
+        base = float(self.current_position["avg_price"])  # 🔥 평균가 기준
         ts = self.tick_size
 
         has_any = False
@@ -352,19 +357,7 @@ class LSPositionProtectionPanel(QWidget):
         if not self.current_position:
             return
 
-        # =========================
-        # 1️⃣ 첫 클릭 → 기준가만 설정
-        # =========================
-        if self.last_clicked_price is None:
-            self.last_clicked_price = price
-            self.lbl_base_price.setText(f"기준가: {price:,.2f}")
-            print(f"[PROTECTION] 기준가 설정: {price}")
-            return
-
-        # =========================
-        # 2️⃣ 이후 클릭 → TP / SL 추가
-        # =========================
-        base = self.last_clicked_price
+        base = float(self.current_position["avg_price"])
         side = self.current_position["side"]
         diff = price - base
 
@@ -372,25 +365,19 @@ class LSPositionProtectionPanel(QWidget):
         if ticks <= 0:
             return
 
-        print(f"[PROTECTION] base={base}, click={price}, ticks={ticks}")
-
         if side == "LONG":
             if diff > 0:
-                # 🔼 익절 추가
                 self.chk_tp.setChecked(True)
                 self.sp_tp_ticks.setValue(ticks)
             else:
-                # 🔽 손절 추가
                 self.chk_sl.setChecked(True)
                 self.sp_sl_ticks.setValue(ticks)
 
         elif side == "SHORT":
             if diff < 0:
-                # 🔼 익절 추가
                 self.chk_tp.setChecked(True)
                 self.sp_tp_ticks.setValue(ticks)
             else:
-                # 🔽 손절 추가
                 self.chk_sl.setChecked(True)
                 self.sp_sl_ticks.setValue(ticks)
 
@@ -450,7 +437,7 @@ class LSPositionProtectionPanel(QWidget):
         self.sp_tp_ticks.blockSignals(True)
         self.sp_sl_ticks.blockSignals(True)
 
-        base = self.last_clicked_price
+        base = float(self.current_position["avg_price"])
         ts = self.tick_size
 
         self._tp_price = None

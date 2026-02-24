@@ -133,3 +133,16 @@ QPushButton[protectQty="true"]:disabled {
     border: 1px solid #333;
     color: #555;
 }
+
+QTableWidget {
+    selection-background-color: #1f3a5f;
+    selection-color: #ffffff;
+}
+
+QTableWidget::item:selected:active {
+    background-color: #1f3a5f;
+}
+
+QTableWidget::item:selected:!active {
+    background-color: #2a2f38;
+}

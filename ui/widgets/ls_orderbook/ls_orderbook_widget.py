@@ -31,6 +31,7 @@ class LSOrderBookWidget(QWidget):
         self.table = table
         self.tick_size = float(tick_size)
         self._dead_zone_ticks = 3
+        self._first_render_done = False
 
         self.symbol: Optional[str] = None
         self.center_price: Optional[float] = None
@@ -66,6 +67,7 @@ class LSOrderBookWidget(QWidget):
     # Public API
     # =====================================================
     def set_symbol(self, symbol: str, tick_size: Optional[float] = None):
+        self._first_render_done = False
         self.symbol = symbol
         if tick_size is not None:
             self.tick_size = float(tick_size)
@@ -225,9 +227,30 @@ class LSOrderBookWidget(QWidget):
         self.engine.apply_protections(self._protections)
         self.renderer.render(self.engine.rows)
 
-        # 기준선은 화면 중앙 쪽에 유지
-        # if self.auto_center_enabled:
-        #     self._scroll_to_center(animated=True)
+        if not self._first_render_done:
+            QTimer.singleShot(50, self._scroll_center_once)
+            self._first_render_done = True
+
+    def _scroll_center_once(self):
+        idx = self._find_center_index()
+        if idx is None:
+            return
+
+        item = self.table.item(idx, self.COL_PRICE)
+        if not item:
+            return
+
+        # 1️⃣ 먼저 화면 안에 보이게
+        self.table.scrollToItem(item, QTableWidget.ScrollHint.EnsureVisible)
+
+        # 2️⃣ 한 프레임 뒤 중앙으로
+        QTimer.singleShot(
+            10,
+            lambda: self.table.scrollToItem(
+                item,
+                QTableWidget.ScrollHint.PositionAtCenter
+            )
+        )
 
     def _refresh_marks_only(self):
         # mark만 바꾼 후 렌더

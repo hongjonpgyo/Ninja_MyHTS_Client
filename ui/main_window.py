@@ -765,6 +765,9 @@ class MainWindow(QMainWindow):
         if not data:
             return
 
+        if data.get("account_id") != self.account_id:
+            return
+
         exec_id = data.get("order_id")
         if exec_id in self._processed_exec_ids:
             return
@@ -883,6 +886,13 @@ class MainWindow(QMainWindow):
         if exec_type in ("TRADE", "FILL", "EXECUTED", "PARTIAL"):
             self.time_sales_controller.on_trade(event)
             self.safe_ui_handle_execution(event)
+            # 🔥 보호주문 재조회 추가
+            symbol = event.get("symbol")
+            if symbol:
+                self.enqueue_async(
+                    self.order_controller._load_protections_worker(symbol)
+                )
+
             # 🔥 0.8초 후 계좌 재조회
             QTimer.singleShot(
                 800,

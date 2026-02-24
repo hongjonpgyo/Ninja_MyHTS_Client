@@ -1,5 +1,9 @@
 from datetime import datetime
 
+UP_COLOR = "#ea3943"      # 상승
+DOWN_COLOR = "#2979ff"    # 하락
+FLAT_COLOR = "#cccccc"
+
 
 # -------------------------
 # 기본 숫자 포맷
@@ -96,6 +100,17 @@ def format_date(date_str: str | None) -> str:
     if not date_str or len(date_str) != 8:
         return "-"
     return datetime.strptime(date_str, "%Y%m%d").strftime("%Y-%m-%d")
+
+def get_price_color(value: float, prev: float | None):
+    if prev is None:
+        return FLAT_COLOR
+    if value > prev:
+        return UP_COLOR
+    elif value < prev:
+        return DOWN_COLOR
+    else:
+        return FLAT_COLOR
+
 
 
 
