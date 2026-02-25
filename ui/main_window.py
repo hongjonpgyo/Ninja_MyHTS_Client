@@ -38,6 +38,7 @@ from ui.ls_controllers.ls_reservation_controller import ReservationController
 from ui.ls_controllers.ls_watchlist_controller import LSWatchListController
 from ui.ls_controllers.ls_order_controller import OrderController
 from ui.settings.trade_setting import UserTradeSetting
+from ui.utils.path_utils import resource_path
 
 # -------------------------
 # Widgets
@@ -75,7 +76,7 @@ class MainWindow(QMainWindow):
         # -------------------------
         # UI Load
         # -------------------------
-        loadUi("ui/main_window_20260123.ui", self)
+        loadUi(resource_path("ui/main_window_20260123.ui"), self)
         self.setFixedWidth(FIXED_WIDTH)
 
         # -------------------------

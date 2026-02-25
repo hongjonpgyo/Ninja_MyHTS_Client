@@ -124,9 +124,9 @@ class LSPositionsTable(QTableWidget):
             ("symbol", None),
             ("side", None),
             ("qty", "qty"),
-            ("entry_price", "price"),
+            ("avg_price", "price"),  # ✅ 수정
             ("unrealized_pnl", "pnl"),
-            ("liq_price", "price"),
+            ("liquidation_price", "price"),  # 키도 맞춰주는 게 좋다
         ]
 
         symbol = new.get("symbol", "")

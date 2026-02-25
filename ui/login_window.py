@@ -6,11 +6,13 @@ from services.api_client import APIClient
 from ui.find_id_dialog import FindIdDialog
 from ui.signup_dialog import SignupDialog
 from ui.password_reset_confirm_dialog import PasswordResetConfirmDialog
+from ui.utils.path_utils import resource_path
+
 
 class LoginWindow(QDialog):
     def __init__(self, api_client: APIClient, on_login_success, parent=None):
         super().__init__(parent)
-        loadUi("ui/login_window.ui", self)
+        loadUi(resource_path("ui/login_window.ui"), self)
 
         print("LoginWindow on_login_success:", on_login_success)
         print("type:", type(on_login_success))

@@ -10,13 +10,16 @@ from ui.login_window import LoginWindow
 from ui.main_window import MainWindow
 from PyQt6.QtGui import QFont, QPalette, QColor
 
+from ui.utils.path_utils import resource_path
+
 os.environ["QT_STYLE_OVERRIDE"] = "Fusion"
 
 def load_qss(*paths):
     app = QApplication.instance()
     qss = ""
     for path in paths:
-        with open(path, "r", encoding="utf-8") as f:
+        full_path = resource_path(path)   # 🔥 여기 추가
+        with open(full_path, "r", encoding="utf-8") as f:
             qss += f.read() + "\n"
     app.setStyleSheet(qss)
 

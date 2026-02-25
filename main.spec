@@ -1,11 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-
 a = Analysis(
-    ['obf_src/main.py'],
-    pathex=[],
+    ['main.py'],
+    pathex=['.'],   # 🔥 이거 추가
     binaries=[],
-    datas=[],
+    datas=[('ui', 'ui')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -14,6 +13,7 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
+
 pyz = PYZ(a.pure)
 
 exe = EXE(
@@ -29,16 +29,5 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-)
-app = BUNDLE(
-    exe,
-    name='main.app',
-    icon=None,
-    bundle_identifier=None,
+    console=True,
 )
