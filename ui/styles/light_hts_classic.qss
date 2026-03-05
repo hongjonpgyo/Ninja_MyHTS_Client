@@ -1,0 +1,192 @@
+/* =========================================================
+   Ninja HTS - CLASSIC HTS (2000s Broker Style)
+   ========================================================= */
+
+/* =========================
+   GLOBAL
+   ========================= */
+QWidget {
+    background-color: #e1e4e8;
+    color: #111111;
+    font-family: "Pretendard";
+    font-size: 10.5pt;
+}
+
+/* =========================
+   FRAME / PANEL
+   ========================= */
+QFrame {
+    border: none;
+}
+
+
+QFrame#TopBar {
+    background-color: #d6dbe1;
+    border-bottom: 1px solid #8f98a3;
+}
+
+/* =========================
+   LABEL
+   ========================= */
+QLabel {
+    color: #111111;
+    font-size: 13px;
+    border: 0px solid #9aa3ad;
+}
+
+/* 상승 */
+QLabel[up="true"] {
+    color: #d60000;
+    font-weight: bold;
+}
+
+/* 하락 */
+QLabel[down="true"] {
+    color: #0051ff;
+    font-weight: bold;
+}
+
+/* =========================
+   BUTTON (클래식 평면)
+   ========================= */
+QPushButton {
+    background-color: #e5e7ea;
+    border: 1px solid #8f98a3;
+    padding: 3px 8px;
+    color: #111;
+}
+
+QPushButton:hover {
+    background-color: #dcdfe3;
+}
+
+QPushButton:pressed {
+    background-color: #cfd4da;
+}
+
+/* 매수 */
+QPushButton#buyButton {
+    background-color: #e8f0ff;
+    border: 1px solid #7fa6ff;
+    color: #0051ff;
+    font-weight: bold;
+}
+
+/* 매도 */
+QPushButton#sellButton {
+    background-color: #ffe5e5;
+    border: 1px solid #f08a8a;
+    color: #d60000;
+    font-weight: bold;
+}
+
+/* =========================
+   TABLE
+   ========================= */
+QTableWidget {
+    background-color: #f7f7f7;
+    alternate-background-color: #eeeeee;
+    gridline-color: #d0d5db;   /* 🔥 살짝 연하게 */
+    selection-background-color: #cfd6df;
+    selection-color: #000000;
+    border: 1px solid #9aa3ad;
+}
+
+QTableWidget::item {
+    border: none;
+}
+
+QTableWidget::item:selected {
+    background-color: #cfd6df;
+}
+
+QHeaderView::section {
+    border: 1px solid #d8d8d8;
+    border-top: none;
+    border-left: none;
+    background: #f4f6f8;
+    padding: 4px;
+    font-weight: 600;
+}
+/* =========================
+   ORDERBOOK
+   ========================= */
+
+/* 매도 영역 (연빨강) */
+QTableWidget::item[askZone="true"] {
+    background-color: #f4dddd;
+}
+
+/* 매수 영역 (연파랑) */
+QTableWidget::item[bidZone="true"] {
+    background-color: #dde6f8;
+}
+
+/* 현재가 행 */
+QTableWidget::item[currentPrice="true"] {
+    background-color: #c9d6e8;
+    font-weight: bold;
+}
+
+/* 상승 */
+QTableWidget::item[up="true"] {
+    color: #d60000;
+    font-weight: bold;
+}
+
+/* 하락 */
+QTableWidget::item[down="true"] {
+    color: #0051ff;
+    font-weight: bold;
+}
+
+/* =========================
+   TAB
+   ========================= */
+QTabWidget::pane {
+    border: 1px solid #9aa3ad;
+    background: #f0f0f0;
+}
+
+QTabBar::tab {
+    background: #d6dbe1;
+    padding: 4px 10px;
+    border: 1px solid #9aa3ad;
+    border-bottom: none;
+}
+
+QTabBar::tab:selected {
+    background: #f0f0f0;
+    font-weight: bold;
+}
+
+/* =========================
+   COMBOBOX
+   ========================= */
+QComboBox {
+    background-color: #f0f0f0;
+    border: 1px solid #9aa3ad;
+    padding: 2px 6px;
+}
+
+/* =========================
+   SCROLL BAR (옛날 느낌)
+   ========================= */
+QScrollBar:vertical {
+    background: #e1e4e8;
+    width: 12px;
+}
+
+QScrollBar::handle:vertical {
+    background: #b6bcc6;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #9aa3ad;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
+}

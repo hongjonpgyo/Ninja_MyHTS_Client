@@ -11,6 +11,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont
+
+from ui.utils.ls_symbol_name import display_symbol_name
 from ui.widgets.preferences_dialog import PreferencesDialog
 
 
@@ -39,6 +41,10 @@ class TopBarWidget(QFrame):
         self.comboSymbol.addItems(DEFAULT_SYMBOLS)
         self.comboSymbol.setFixedWidth(130)
 
+        self.labelSymbol = QLabel("항생H26")
+        self.labelSymbol.setFont(self._font(16, bold=True))
+        # self.labelSymbol.setStyleSheet("color:#ffffff;")
+
         self.labelPrice = QLabel("2,965.94")
         self.labelPrice.setFont(self._font(18, bold=True))
         self.labelPrice.setAlignment(Qt.AlignmentFlag.AlignVCenter)
@@ -47,6 +53,7 @@ class TopBarWidget(QFrame):
         self.labelChange.setFont(self._font(11))
 
         # left.addWidget(self.comboSymbol)
+        left.addWidget(self.labelSymbol)
         left.addWidget(self.labelPrice)
         left.addWidget(self.labelChange)
 
@@ -126,7 +133,7 @@ class TopBarWidget(QFrame):
         self.labelHigh.setStyleSheet("color:#cccccc;")
         self.labelLow.setStyleSheet("color:#cccccc;")
         self.labelVolume.setStyleSheet("color:#cccccc;")
-        self.labelLive.setStyleSheet("color:#2ecc71;")
+        self.labelLive.setStyleSheet("color:#0051ff;")
 
     # -------------------------------------------------
     def _font(self, size, bold=False):
@@ -162,21 +169,31 @@ class TopBarWidget(QFrame):
     # ===============================
     # 외부 업데이트 API
     # ===============================
-    def update_price(self, price: float, diff: float, pct: float):
+    def update_price(self, symbol, price, diff, pct):
+        name = display_symbol_name(symbol)
+
+        if isinstance(name, tuple):
+            name = name[0]
+
+        self.labelSymbol.setText(name)
         self.labelPrice.setText(f"{price:,.2f}")
 
-        sign = "+" if diff >= 0 else ""
-        self.labelChange.setText(f"{sign}{diff:.2f} ({sign}{pct:.2f}%)")
-
-        if diff > 0:
-            self.labelChange.setStyleSheet("color:#ff4d4d;")
-            self.labelPrice.setStyleSheet("color:#ff4d4d;")
-        elif diff < 0:
-            self.labelChange.setStyleSheet("color:#4da6ff;")
-            self.labelPrice.setStyleSheet("color:#4da6ff;")
+        if pct > 0:
+            color = "#e74c3c"
+            arrow = "▲"
+        elif pct < 0:
+            color = "#3498db"
+            arrow = "▼"
         else:
-            self.labelChange.setStyleSheet("color:#aaaaaa;")
-            self.labelPrice.setStyleSheet("color:#FFD700;")
+            color = "#aaaaaa"
+            arrow = "―"
+
+        self.labelChange.setText(
+            f"{arrow} {abs(diff):,.2f} ({pct:+.2f}%)"
+        )
+
+        self.labelChange.setStyleSheet(f"color:{color};")
+        self.labelPrice.setStyleSheet(f"color:{color};")
 
     def update_stats(self, high, low, volume, funding):
         self.labelHigh.setText(f"고가 {high:,.2f}")
@@ -213,6 +230,12 @@ class TopBarWidget(QFrame):
         self.labelVolume.setText("거래량 --")
         self.update_status(live=False, latency_ms=0)
 
+    def reset_display(self):
+        self.labelPrice.setText("--")
+        self.labelChange.setText("+0.00 (+0.00%)")
+        self.labelPrice.setStyleSheet("color:#FFD700;")
+        self.labelChange.setStyleSheet("color:#aaaaaa;")
+
     def open_preferences(self):
         dlg = PreferencesDialog(
             setting=self.main_window.trade_setting,
@@ -226,8 +249,23 @@ class TopBarWidget(QFrame):
             self.open_tradingview(symbol)
 
     def open_tradingview(self, symbol: str):
-        url = f"https://www.tradingview.com/chart/?symbol={symbol}"
+        tv_symbol = self.convert_to_tradingview_symbol(symbol)
+        url = f"https://www.tradingview.com/chart/?symbol={tv_symbol}&interval=1"
         webbrowser.open(url)
+
+    def convert_to_tradingview_symbol(self, symbol: str) -> str:
+        print(symbol)
+        mapping = {
+            "HSI": "HKEX:HSI1!",
+            "NQ": "CME_MINI:NQ1!",
+            "ES": "CME_MINI:ES1!",
+        }
+
+        for key in mapping:
+            if symbol.startswith(key):
+                return mapping[key]
+
+        return symbol  # fallback
 
         # self.chart_popup = ChartPopup(symbol, self)
         # self.chart_popup.show()

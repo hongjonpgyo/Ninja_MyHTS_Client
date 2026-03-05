@@ -1,0 +1,216 @@
+/* =========================================================
+   Ninja HTS - LIGHT HTS FINAL
+   Red = 상승/매도
+   Blue = 하락/매수
+   ========================================================= */
+
+/* =========================
+   GLOBAL
+   ========================= */
+QWidget {
+    background-color: #f4f6f9;
+    color: #222222;
+    font-family: "Pretendard";
+    font-size: 11pt;
+}
+
+/* =========================
+   FRAME / PANEL
+   ========================= */
+QFrame {
+    background-color: #ffffff;
+    border: 1px solid #d7dde6;
+}
+
+QFrame#TopBar {
+    background-color: #ffffff;
+    border-bottom: 1px solid #cfd6df;
+}
+
+/* =========================
+   LABEL
+   ========================= */
+QLabel {
+    color: #222222;
+}
+
+/* 상승 */
+QLabel[up="true"] {
+    color: #d60000;
+    font-weight: bold;
+}
+
+/* 하락 */
+QLabel[down="true"] {
+    color: #0051ff;
+    font-weight: bold;
+}
+
+/* 보합 */
+QLabel[flat="true"] {
+    color: #444444;
+}
+
+/* LIVE 상태 */
+QLabel#liveOn {
+    color: #0051ff;
+    font-weight: bold;
+}
+
+QLabel#liveOff {
+    color: #999999;
+}
+
+/* =========================
+   BUTTON
+   ========================= */
+QPushButton {
+    background-color: #f0f3f8;
+    border: 1px solid #c8d0db;
+    border-radius: 4px;
+    padding: 4px 10px;
+    color: #222;
+}
+
+QPushButton:hover {
+    background-color: #e2e8f3;
+}
+
+QPushButton:pressed {
+    background-color: #d6deeb;
+}
+
+/* 매수 버튼 (파랑) */
+QPushButton#buyButton {
+    background-color: #e8f1ff;
+    border: 1px solid #9dbcfb;
+    color: #0051ff;
+    font-weight: bold;
+}
+
+/* 매도 버튼 (빨강) */
+QPushButton#sellButton {
+    background-color: #ffeaea;
+    border: 1px solid #f3a6a6;
+    color: #d60000;
+    font-weight: bold;
+}
+
+/* =========================
+   TABLE
+   ========================= */
+QTableWidget {
+    background-color: #ffffff;
+    alternate-background-color: #f7f9fc;
+    gridline-color: #d9dee6;
+    selection-background-color: #dbe8ff;
+    selection-color: #000000;
+    border: 1px solid #cfd6df;
+}
+
+QTableWidget::item {
+    padding: 3px;
+}
+
+QTableWidget::item:selected {
+    background-color: #dbe8ff;
+    color: #000000;
+}
+
+/* 헤더 */
+QHeaderView::section {
+    background-color: #e9edf3;
+    color: #333333;
+    border: 1px solid #d0d6df;
+    padding: 4px;
+    font-weight: bold;
+}
+
+/* =========================
+   ORDERBOOK ZONE
+   ========================= */
+
+/* 매도 영역 (연빨강) */
+QTableWidget::item[askZone="true"] {
+    background-color: rgba(214, 0, 0, 0.06);
+}
+
+/* 매수 영역 (연파랑) */
+QTableWidget::item[bidZone="true"] {
+    background-color: rgba(0, 81, 255, 0.06);
+}
+
+/* 현재가 강조 */
+QTableWidget::item[currentPrice="true"] {
+    background-color: #dbe8ff;
+    font-weight: bold;
+}
+
+/* 상승 텍스트 */
+QTableWidget::item[up="true"] {
+    color: #d60000;
+    font-weight: bold;
+}
+
+/* 하락 텍스트 */
+QTableWidget::item[down="true"] {
+    color: #0051ff;
+    font-weight: bold;
+}
+
+/* =========================
+   TAB
+   ========================= */
+QTabWidget::pane {
+    border: 1px solid #cfd6df;
+    background: #ffffff;
+}
+
+QTabBar::tab {
+    background: #e9edf3;
+    padding: 6px 12px;
+    border: 1px solid #cfd6df;
+    border-bottom: none;
+}
+
+QTabBar::tab:selected {
+    background: #ffffff;
+    font-weight: bold;
+}
+
+/* =========================
+   COMBOBOX
+   ========================= */
+QComboBox {
+    background-color: #ffffff;
+    border: 1px solid #cfd6df;
+    padding: 4px 6px;
+}
+
+QComboBox:hover {
+    border: 1px solid #9dbcfb;
+}
+
+/* =========================
+   SCROLL BAR
+   ========================= */
+QScrollBar:vertical {
+    background: #f0f2f6;
+    width: 10px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: #c7ced9;
+    min-height: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #aeb7c5;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
+}

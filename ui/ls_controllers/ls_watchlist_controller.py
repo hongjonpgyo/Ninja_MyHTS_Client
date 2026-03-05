@@ -1,6 +1,6 @@
 import asyncio
 
-from PyQt6.QtWidgets import QTableWidgetItem, QAbstractItemView, QHeaderView
+from PyQt6.QtWidgets import QTableWidgetItem, QAbstractItemView, QHeaderView, QTableWidget
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QFont
 
@@ -102,10 +102,7 @@ class LSWatchListController:
 
         def set_item(col, text, align, color=None, bold=False):
             item = QTableWidgetItem(text)
-
-            item.setTextAlignment(
-                int(align | Qt.AlignmentFlag.AlignLeft)
-            )
+            item.setTextAlignment(int(align | Qt.AlignmentFlag.AlignLeft))
 
             if color:
                 item.setForeground(color)
@@ -116,8 +113,9 @@ class LSWatchListController:
 
         symbol = row.get("symbol", "")
         trd_p = row.get("last_price")
-        diff = row.get("diff")
+        change_rate = row.get("change_rate") or row.get("diff")  # LS 등락률 %
 
+        # ⭐ 즐겨찾기
         set_item(
             self.COL_FAV,
             "❤" if symbol in self.favorites else "",
@@ -128,7 +126,7 @@ class LSWatchListController:
         # -----------------------
         # 종목명 / 코드
         # -----------------------
-        display_nm, full_nm = display_symbol_name(symbol)
+        display_nm, _ = display_symbol_name(symbol)
 
         set_item(
             self.COL_NAME,
@@ -136,11 +134,13 @@ class LSWatchListController:
             Qt.AlignmentFlag.AlignLeft,
             bold=True,
         )
+
         set_item(
             self.COL_SYMBOL,
             symbol,
             Qt.AlignmentFlag.AlignLeft,
-            QColor("#bbbbbb"),
+            bold=True,
+            # QColor("#bbbbbb"),
         )
 
         # -----------------------
@@ -162,15 +162,13 @@ class LSWatchListController:
             return
 
         price = float(trd_p)
-        diff_val = float(diff or 0)
+        rate = float(change_rate or 0)
 
-        diff_rate = (diff_val / price) * 100 if price else 0
-
-        if diff_rate > 0:
-            color = QColor("#e74c3c")   # 상승
+        if rate > 0:
+            color = QColor("#e74c3c")  # 상승
             arrow = "▲"
-        elif diff_rate < 0:
-            color = QColor("#3498db")   # 하락
+        elif rate < 0:
+            color = QColor("#3498db")  # 하락
             arrow = "▼"
         else:
             color = QColor("#aaaaaa")
@@ -183,9 +181,10 @@ class LSWatchListController:
             color,
             bold=True,
         )
+
         set_item(
             self.COL_DIFF,
-            f"{arrow} {abs(diff_rate):.2f}%",
+            f"{arrow} {abs(rate):.2f}%",
             Qt.AlignmentFlag.AlignCenter,
             color,
         )
@@ -237,7 +236,7 @@ class LSWatchListController:
             fav_item.setText("")
             fav_item.setForeground(QColor("#555555"))
 
-    def update_price(self, symbol: str, price: float):
+    def update_price(self, symbol: str, price: float, change: float, change_rate: float):
         """
         PriceController 에서 호출하는 표준 인터페이스
         """
@@ -245,22 +244,14 @@ class LSWatchListController:
             return
 
         row = self._symbol_row_map[symbol]
-        self._update_price_cell(row, price)
+        self._update_price_cell(row, price, change, change_rate)
 
-    def _update_price_cell(self, row: int, price: float):
-        row_data = self.table.property(f"_row_{row}")
-        prev_close = row_data.get("close_p")
+    def _update_price_cell(self, row: int, price: float, change: float, change_rate: float):
 
-        if not prev_close:
-            return
-
-        day_diff = price - prev_close
-        day_rate = (day_diff / prev_close) * 100
-
-        if day_rate > 0:
+        if change_rate > 0:
             color = QColor("#e74c3c")
             arrow = "▲"
-        elif day_rate < 0:
+        elif change_rate < 0:
             color = QColor("#3498db")
             arrow = "▼"
         else:
@@ -271,7 +262,7 @@ class LSWatchListController:
         self.table.item(row, self.COL_PRICE).setForeground(color)
 
         self.table.item(row, self.COL_DIFF).setText(
-            f"{arrow} {abs(day_rate):.2f}%"
+            f"{arrow} {abs(change_rate):.2f}%"
         )
         self.table.item(row, self.COL_DIFF).setForeground(color)
 

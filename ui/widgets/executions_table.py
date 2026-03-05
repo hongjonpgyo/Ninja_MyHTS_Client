@@ -185,7 +185,7 @@ class ExecutionsTable(QtWidgets.QTableWidget):
         price_item = self.item(row, 3)
 
         if side == "BUY":
-            fg = QColor("#2ecc71")
+            fg = QColor("#0051FF")
         elif side == "SELL":
             fg = QColor("#e74c3c")
         else:

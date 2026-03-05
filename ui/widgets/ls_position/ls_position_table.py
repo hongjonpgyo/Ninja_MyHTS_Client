@@ -84,6 +84,7 @@ class LSPositionsTable(QTableWidget):
 
         self._set_item(r, 0, display_nm)
 
+
         # -------------------------
         # 포지션 방향 (용어 통일)
         # -------------------------
@@ -114,7 +115,7 @@ class LSPositionsTable(QTableWidget):
             "-" if liq is None else fmt(liq, fmt_value["price"])
         )
 
-        self._apply_style(r, row)
+        # self._apply_style(r, row)
 
     # ----------------------------------------------------------
     # 변경된 셀만 업데이트
@@ -154,7 +155,7 @@ class LSPositionsTable(QTableWidget):
                 self._set_item(r, c, new.get(key))
 
         # 스타일은 항상 마지막에
-        self._apply_style(r, new)
+        # self._apply_style(r, new)
 
     def _insert_protection_row(self, position_row: int, symbol: str):
         if symbol in self._protection_rows:
@@ -213,8 +214,6 @@ class LSPositionsTable(QTableWidget):
 
         row_data = self._rows[row_index]
 
-        print("SELECT:", row_data)
-
         data = {
 
             "symbol": row_data["symbol"],
@@ -233,8 +232,13 @@ class LSPositionsTable(QTableWidget):
         if item is None:
             item = QTableWidgetItem()
             self.setItem(row, col, item)
+        if col == 0:
+            item.setTextAlignment(
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+            )
+        else:
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         item.setText(str(value))
 
     # ----------------------------------------------------------

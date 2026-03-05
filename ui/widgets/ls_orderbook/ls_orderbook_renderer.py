@@ -4,12 +4,12 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
 )
 from PyQt6.QtGui import QColor, QBrush, QFont
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QMargins, QEasingCurve, QPoint
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QMargins, QEasingCurve, QPoint, QObject
 
 from services.ls.ls_orderbook_engine import OrderBookRow
 
 
-class OrderBookRenderer:
+class OrderBookRenderer(QObject):
     COL_MIT_SELL = 0
     COL_SELL = 1
     COL_SELL_CNT = 2
@@ -21,14 +21,15 @@ class OrderBookRenderer:
     COL_MIT_BUY = 8
 
     def __init__(self, table: QTableWidget):
+        super().__init__(table)  # 🔥 반드시 추가
         self.table = table
         self._nudge_anim = None
         # -----------------------------
         # Colors
         # -----------------------------
-        self.bg_default = QColor("#1e1e1e")
-        self.bg_center = QColor("#242424")
-        self.bg_ls = QColor("#203a52")
+        self.bg_default = QColor("#ffffff")  # 기본 배경
+        self.bg_center = QColor("#f4f6f8")  # 현재가 라인
+        self.bg_ls = QColor("#e9f2ff")  # 현재 체결 라인
 
         self.tp_line = QColor(46, 204, 113)
         self.sl_line = QColor(231, 76, 60)
@@ -45,8 +46,8 @@ class OrderBookRenderer:
         self.bid_zone = QColor(46, 204, 113, 14)
 
         # Text colors
-        self.fg_normal = QColor("#e0e0e0")
-        self.fg_ls = QColor("#ffd54f")
+        self.fg_normal = QColor("#000000")  # 🔥 가격 기본 검정
+        self.fg_ls = QColor("#000000")  # 🔥 현재가도 검정
 
         # Tag colors (my orders)
         self.fg_my_sell = QColor("#ffd54f")
@@ -86,6 +87,8 @@ class OrderBookRenderer:
 
         self._last_rows: List[OrderBookRow] = []
 
+        self.hover_row: Optional[int] = None
+
     # =================================================
     # Table setup
     # =================================================
@@ -104,6 +107,7 @@ class OrderBookRenderer:
         self.table.setMouseTracking(True)
         self.table.setShowGrid(False)
         self.table.setFrameShape(QTableWidget.Shape.NoFrame)
+        self.table.setLineWidth(0)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -118,6 +122,8 @@ class OrderBookRenderer:
                 it = self._get_item(r, c)
                 it.setBackground(QBrush(self.bg_default))
                 it.setForeground(self.fg_normal)
+
+        self.table.viewport().installEventFilter(self)
 
     # =================================================
     # Render
@@ -179,6 +185,14 @@ class OrderBookRenderer:
 
         self._nudge_anim.start()
 
+    def eventFilter(self, obj, event):
+        if obj == self.table.viewport() and event.type() == event.Type.MouseMove:
+            row = self.table.rowAt(event.pos().y())
+            if row != self.hover_row:
+                self.hover_row = row
+                self._restore_all()  # 🔥 다시 render
+        return False
+
     # =================================================
     # Row render
     # =================================================
@@ -187,6 +201,7 @@ class OrderBookRenderer:
         # Base background priority
         # -----------------
         bg = self.bg_default
+
         if row.is_center:
             bg = self.bg_center
         if row.is_ls_price:
@@ -237,6 +252,9 @@ class OrderBookRenderer:
 
         price_it.setText(price_text)
         price_it.setFont(self.font_price)
+
+        if self.hover_row is not None and r == self.hover_row:
+            price_it.setFont(self.font_qty)
 
         # -----------------
         # ASK / BID (text)

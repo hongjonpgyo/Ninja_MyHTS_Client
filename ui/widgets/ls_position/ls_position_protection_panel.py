@@ -102,7 +102,7 @@ class LSPositionProtectionPanel(QWidget):
         tp_row = QHBoxLayout()
 
         self.chk_tp = QCheckBox("익절 (TP)")
-        self.chk_tp.setStyleSheet("color:#2ecc71; font-weight:bold;")
+        self.chk_tp.setStyleSheet("color:#0051FF; font-weight:bold;")
 
         self.sp_tp_ticks = QSpinBox()
         self.sp_tp_ticks.setRange(0, 999)
@@ -207,7 +207,7 @@ class LSPositionProtectionPanel(QWidget):
 
         if pos["side"] == "LONG":
             self.lbl_side.setText("포지션: 매수")
-            self.lbl_side.setStyleSheet("color:#2ecc71;")
+            self.lbl_side.setStyleSheet("color:#0051FF;")
         else:
             self.lbl_side.setText("포지션: 매도")
             self.lbl_side.setStyleSheet("color:#e74c3c;")

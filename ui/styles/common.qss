@@ -96,6 +96,7 @@ QCheckBox::indicator:checked {
 ===================================================== */
 QLabel {
     font-size: 13px;
+    border: 0px solid #9aa3ad;
 }
 
 QLabel#labelClock {
@@ -145,4 +146,7 @@ QTableWidget::item:selected:active {
 
 QTableWidget::item:selected:!active {
     background-color: #2a2f38;
+}
+QTableWidget::item:hover {
+    background-color: #2a2f3a;
 }

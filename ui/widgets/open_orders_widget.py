@@ -196,7 +196,7 @@ class OpenOrdersWidget(QtWidgets.QWidget):
         item = QTableWidgetItem("" if v is None else str(v))
         item.setTextAlignment(align | QtCore.Qt.AlignmentFlag.AlignVCenter)
         item.setFlags(item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable)
-        item.setForeground(QtGui.QColor(fg))
+        # item.setForeground(QtGui.QColor(fg))
 
         if bold:
             font = item.font()
@@ -235,7 +235,7 @@ class OpenOrdersWidget(QtWidgets.QWidget):
             st = self._set_item(r, 6, f" {status} ")
 
             # BUY / SELL 컬러
-            side_color = QtGui.QColor("#2ecc71" if side == "BUY" else "#e74c3c")
+            side_color = QtGui.QColor("#0051ff" if side == "BUY" else "#e74c3c")
             side_item.setForeground(side_color)
             price_item.setForeground(QtGui.QColor("#f1c40f"))
 

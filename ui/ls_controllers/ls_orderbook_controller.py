@@ -36,6 +36,8 @@ class OrderBookController:
     # ==================================================
     def on_orderbook_event(self, event: dict):
         symbol = event.get("symbol")
+        tick_size = event.get("tick_size")
+
         if symbol != self.current_symbol:
             return
 
@@ -45,13 +47,13 @@ class OrderBookController:
         if not bids or not asks:
             return
 
-        # 🔥 중심가를 호가 기준으로 재계산
         center_price = (bids[0]["price"] + asks[0]["price"]) / 2
 
         self.view.update_depth(
             bids=bids,
             asks=asks,
             center_price=center_price,
+            tick_size=tick_size,  # ✅ 추가
         )
 
 

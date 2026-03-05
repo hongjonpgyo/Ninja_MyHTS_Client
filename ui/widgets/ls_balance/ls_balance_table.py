@@ -77,7 +77,7 @@ class LSBalanceTable(QWidget):
     def _make_key(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setFont(self.font_key)
-        lbl.setStyleSheet("color:#9a9a9a;")
+        # lbl.setStyleSheet("color:#9a9a9a;")
         lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         return lbl
 
@@ -85,7 +85,7 @@ class LSBalanceTable(QWidget):
         lbl = QLabel("0")
         lbl.setFont(font or self.font_value)
         lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        lbl.setStyleSheet("color:#e0e0e0;")
+        # lbl.setStyleSheet("color:#e0e0e0;")
         return lbl
 
     # ==================================================
@@ -120,11 +120,11 @@ class LSBalanceTable(QWidget):
     # ==================================================
     def _apply_pnl_color(self, pnl: float):
         if pnl > 0:
-            color = "#2ecc71"   # 초록
+            color = "#0051ff"   # 초록
         elif pnl < 0:
             color = "#e74c3c"   # 빨강
         else:
-            color = "#cccccc"
+            color = "#000000"
 
         self.lblPnL.setStyleSheet(f"color:{color};")
         self.lblPnLRate.setStyleSheet(f"color:{color};")

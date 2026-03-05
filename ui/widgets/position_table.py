@@ -166,7 +166,7 @@ class PositionsTable(QTableWidget):
         side_item = self.item(row, 1)
         if side_item:
             if side == "LONG":
-                side_item.setForeground(QColor("#2ecc71"))
+                side_item.setForeground(QColor("#0051ff"))
                 side_item.setBackground(QColor(46, 204, 113, 40))
             elif side == "SHORT":
                 side_item.setForeground(QColor("#e74c3c"))

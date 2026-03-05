@@ -86,30 +86,30 @@ class TimeSalesController:
                 int(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
             )
             it.setFlags(it.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            it.setBackground(QColor("#232323"))
+            # it.setBackground(QColor("#232323"))
 
         # -------------------------
         # 색상 설정
         # -------------------------
-        if side == "BUY":
-            fg = QColor("#2ecc71")
-            flash_bg = QColor(46, 204, 113, 60)
-        else:
-            fg = QColor("#e74c3c")
-            flash_bg = QColor(231, 76, 60, 60)
+        # if side == "BUY":
+        #     # fg = QColor("#0051ff")
+        #     flash_bg = QColor(46, 204, 113, 60)
+        # else:
+        #     # fg = QColor("#e74c3c")
+        #     flash_bg = QColor(231, 76, 60, 60)
 
-        item_price.setForeground(fg)
+        # item_price.setForeground(fg)
         item_price.setFont(self.bold_font)
 
-        item_side.setForeground(fg)
+        # item_side.setForeground(fg)
         item_side.setFont(self.bold_font)
 
-        item_qty.setForeground(QColor("#dddddd"))
+        # item_qty.setForeground(QColor("#dddddd"))
 
-        # 하이라이트 적용
-        highlight_items = [item_time, item_price, item_qty, item_side]
-        for it in highlight_items:
-            it.setBackground(flash_bg)
+        # # 하이라이트 적용
+        # highlight_items = [item_time, item_price, item_qty, item_side]
+        # for it in highlight_items:
+        #     it.setBackground(flash_bg)
 
         # -------------------------
         # 테이블 삽입
@@ -122,10 +122,10 @@ class TimeSalesController:
         # -------------------------
         # 안전한 하이라이트 복구
         # -------------------------
-        QTimer.singleShot(
-            400,
-            lambda items=highlight_items: self._clear_highlight_items(items)
-        )
+        # QTimer.singleShot(
+        #     400,
+        #     lambda items=highlight_items: self._clear_highlight_items(items)
+        # )
 
         # -------------------------
         # Row 제한
@@ -135,6 +135,7 @@ class TimeSalesController:
 
     # -------------------------------------------------
     def _clear_highlight_items(self, items):
-        for item in items:
-            if item:
-                item.setBackground(QColor("#232323"))
+        return None
+        # for item in items:
+            # if item:
+                # item.setBackground(QColor("#232323"))

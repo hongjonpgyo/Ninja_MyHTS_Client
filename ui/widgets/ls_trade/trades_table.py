@@ -98,7 +98,7 @@ class TradesTable(QTableWidget):
 
         # 구분
         side_text = "매수" if side == "BUY" else "매도"
-        side_color = QColor("#2ecc71") if side == "BUY" else QColor("#e74c3c")
+        side_color = QColor("#0051FF") if side == "BUY" else QColor("#e74c3c")
         self._set_item(
             row, self.COL_SIDE, side_text,
             color=side_color,
@@ -121,7 +121,7 @@ class TradesTable(QTableWidget):
         )
 
         # 상태
-        status_color = QColor("#2ecc71") if status == "완료" else QColor("#7f8c8d")
+        status_color = QColor("#0051FF") if status == "완료" else QColor("#7f8c8d")
         self._set_item(
             row, self.COL_STATUS, status,
             color=status_color,

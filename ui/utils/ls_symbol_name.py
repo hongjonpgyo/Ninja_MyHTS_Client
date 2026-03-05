@@ -4,6 +4,7 @@ import re
 LS_SYMBOL_KR_MAP = {
     # China / H-Share
     "HSI": "항셍",
+    "HMH": "미니항셍",
     "HCEI": "항셍중국",
     "HSCEI": "항셍중국",
     "CUSH": "위안",

@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
 
         self.user = None
         self.account_id = None
-        self.current_symbol = "HSIG26"
+        self.current_symbol = ""
         self.running = True
         self._fetching_open_orders = False
         self.selected_ls_row = None
@@ -249,9 +249,9 @@ class MainWindow(QMainWindow):
     def _init_orderbook(self):
         self.orderbook = LSOrderBookWidget(
             table=self.tableOrderbook,
-            tick_size=1.0,
+            tick_size=1.0,  # 최초만 임시
         )
-        self.orderbook.set_symbol(self.current_symbol, 1.0)
+        self.orderbook.set_symbol(self.current_symbol)  # ✅ 1.0 강제 전달 제거
 
         # self.tableOrderbook.cellClicked.connect(self.on_orderbook_click)
 
@@ -513,8 +513,8 @@ class MainWindow(QMainWindow):
         price = event.get("price")
 
         # 1️⃣ WatchList
-        if hasattr(self, "ls_watchlist_controller"):
-            self.ls_watchlist_controller.update_price(symbol, price)
+        # if hasattr(self, "ls_watchlist_controller"):
+        #     self.ls_watchlist_controller.update_price(symbol, price)
 
         # 2️⃣ OrderBook 현재가만 갱신
         if (
@@ -711,11 +711,7 @@ class MainWindow(QMainWindow):
             # 1️⃣ 상단 가격 갱신
             self.safe_ui(
                 self.price_controller.on_price,
-                {
-                    "symbol": self.current_symbol,
-                    "price": price,
-                    "source": "LS",
-                }
+                data,
             )
 
             # 2️⃣ OrderBook 기준가 이동
@@ -745,6 +741,7 @@ class MainWindow(QMainWindow):
             balance = await self.ls_account_api.get_balance(self.account_id)
 
             positions = await self.ls_account_api.get_positions(self.account_id)
+
             self.safe_ui(
                 self.balance_widget.update_balance,
                 balance

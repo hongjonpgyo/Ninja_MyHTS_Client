@@ -40,7 +40,7 @@ class SymbolSummaryWidget(QFrame):
         for row, (left, right) in enumerate(fields):
             self._create_row(grid, row, left, right)
 
-        self._apply_style()
+        # self._apply_style()
 
         # 🔥 QSS 이후에도 고정폭 폰트 재적용 (안전장치)
         mono = QFont()

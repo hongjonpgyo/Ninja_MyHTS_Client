@@ -24,12 +24,12 @@ class LSOrderBookWidget(QWidget):
     # COL_MY_SELL = 2
     # COL_MY_BUY = 6
 
-    def __init__(self, table: QTableWidget, tick_size: float, parent: Optional[QWidget] = None):
+    def __init__(self, table: QTableWidget, tick_size: None, parent: Optional[QWidget] = None):
         super().__init__(parent)
 
         self.order_controller = None
         self.table = table
-        self.tick_size = float(tick_size)
+        self.tick_size = 1.0
         self._dead_zone_ticks = 3
         self._first_render_done = False
 
@@ -50,7 +50,8 @@ class LSOrderBookWidget(QWidget):
         self.renderer.configure_table(total_rows=ORDERBOOK_DEPTH * 2 + 1)
 
         self._scroll_anim: Optional[QPropertyAnimation] = None
-
+        self.table.setShowGrid(True)
+        self.table.setGridStyle(Qt.PenStyle.SolidLine)
         self.auto_center_enabled = False
 
         self.protection_panel = None
@@ -97,21 +98,47 @@ class LSOrderBookWidget(QWidget):
             self.engine.apply_protections(self._protections)
             self.renderer.render(self.engine.rows)
 
-    def update_depth(self, bids: List[Dict], asks: List[Dict], center_price: float, my_orders: Optional[Dict] = None):
+    def update_depth(
+            self,
+            bids: List[Dict],
+            asks: List[Dict],
+            center_price: float,
+            my_orders: Optional[Dict] = None,
+            tick_size: Optional[float] = None,  # ✅ 추가
+    ):
         self._last_bids = bids or []
         self._last_asks = asks or []
         if my_orders is not None:
             self._last_my_orders = my_orders
 
-        # 🔥 핵심 방어
+        # ✅ tick_size 들어오면 즉시 반영
+        if tick_size is not None:
+            ts = float(tick_size)
+            if ts > 0 and ts != self.tick_size:
+                self.tick_size = ts
+                self.engine.tick_size = ts
+
+        # 🔥 center_price도 tick 정렬(안 하면 0.5틱에서 중심가가 뜸)
+        center_price = self._round_to_tick(float(center_price))
+
         if self.has_real_price:
-            # ❌ ORDERBOOK center_price 무시
             pass
         else:
-            # 최초 1회만 허용
-            self.center_price = float(center_price)
+            self.center_price = center_price
 
         self._rebuild(full=True)
+
+    def _tick_decimals(self) -> int:
+        # tick_size가 0.25 -> 2자리, 0.5 -> 1자리, 0.1 -> 1자리 등
+        s = f"{self.tick_size:.10f}".rstrip("0").rstrip(".")
+        return len(s.split(".")[1]) if "." in s else 0
+
+    def _round_to_tick(self, price: float) -> float:
+        ts = float(self.tick_size) if self.tick_size else 1.0
+        if ts <= 0:
+            return float(price)
+        p = round(price / ts) * ts
+        return round(p, self._tick_decimals())
 
     def update_my_orders(self, my_orders: Dict):
         my_orders = my_orders or {}
@@ -270,22 +297,21 @@ class LSOrderBookWidget(QWidget):
         if tick_move > 0:
             for _ in range(tick_move):
                 rows.pop(0)
-                new_price = round(rows[-1].price - self.tick_size, 2)
+                new_price = self._round_to_tick(rows[-1].price - self.tick_size)
                 rows.append(self._make_empty_row(new_price))
         else:
             for _ in range(abs(tick_move)):
                 rows.pop()
-                new_price = round(rows[0].price + self.tick_size, 2)
+                new_price = self._round_to_tick(rows[0].price + self.tick_size)
                 rows.insert(0, self._make_empty_row(new_price))
 
-        # ✅ center는 항상 고정
+        cp = self._round_to_tick(float(self.center_price)) if self.center_price is not None else None
         for i, r in enumerate(rows):
             r.is_center = (i == ORDERBOOK_DEPTH)
-            r.is_ls_price = (round(r.price, 2) == round(self.center_price, 2))
+            r.is_ls_price = (cp is not None and self._round_to_tick(float(r.price)) == cp)
 
     def _make_empty_row(self, price: float) -> OrderBookRow:
-        # ✅ 네가 말한 make_empty_row "실제 구현"
-        return OrderBookRow(price=round(float(price), 2))
+        return OrderBookRow(price=self._round_to_tick(float(price)))
 
     def _scroll_to_center(self, animated: bool = True):
         pass

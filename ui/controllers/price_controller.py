@@ -36,7 +36,7 @@ class PriceController:
         self.prev_price = None
 
         if self.top_bar:
-            self.top_bar.update_price(0.0, 0.0, 0.0)
+            self.top_bar.reset_display()
 
     # -------------------------------------------------
     # ✅ 단일 진입점
@@ -60,7 +60,12 @@ class PriceController:
         # Watchlist는 항상 갱신
         # -------------------------
         if self.watchlist and symbol:
-            self.watchlist.update_price(symbol, price)
+            self.watchlist.update_price(
+                symbol,
+                price,
+                data.get("change", 0.0),
+                data.get("change_rate", 0.0),
+            )
 
         # -------------------------
         # 선택 심볼 필터
@@ -71,7 +76,11 @@ class PriceController:
         # -------------------------
         # TopBar
         # -------------------------
-        self._update_top_bar(price, diff, pct, data)
+        # 🔥 LS가 준 값 그대로 사용
+        diff = float(data.get("change", 0.0))
+        pct = float(data.get("change_rate", 0.0))
+
+        self._update_top_bar(symbol, price, diff, pct, data)
 
         # -------------------------
         # 주문 패널 (Market만)
@@ -121,11 +130,11 @@ class PriceController:
         return diff, pct
 
     # -------------------------------------------------
-    def _update_top_bar(self, price, diff, pct, data):
+    def _update_top_bar(self, symbol, price, diff, pct, data):
         if not self.top_bar:
             return
 
-        self.top_bar.update_price(price, diff, pct)
+        self.top_bar.update_price(symbol, price, diff, pct)
 
         if not data:
             return

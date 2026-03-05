@@ -163,7 +163,7 @@ class ReservationWidget(QWidget):
         it.setFont(self.bold_font)
 
         if side == "BUY":
-            it.setForeground(QColor("#2ecc71"))
+            it.setForeground(QColor("#0051FF"))
         else:
             it.setForeground(QColor("#e74c3c"))
 
@@ -193,7 +193,7 @@ class ReservationWidget(QWidget):
         color_map = {
             "WAITING": "#6fa8dc",
             "TRIGGERED": "#f1c40f",
-            "DONE": "#2ecc71",
+            "DONE": "#0051FF",
             "CANCELED": "#888888",
         }
 
