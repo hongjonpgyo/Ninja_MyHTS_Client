@@ -46,15 +46,32 @@ def main():
 
     # 1️⃣ 스타일 고정
     app.setStyle(QStyleFactory.create("Fusion"))
+    app.setStyleSheet("""
+    QTableWidget {
+        border: none;
+        background: #ffffff;
+        gridline-color: #d8d8d8;
+    }
+
+    QHeaderView::section {
+        border: 1px solid #d8d8d8;
+        border-top: none;
+        border-left: none;
+        background: #f4f6f8;
+    }
+    """)
+
     force_dark_palette(app)
     # 2️⃣ 폰트
     app.setFont(QFont("Pretendard", 12))
 
     # 3️⃣ QSS
     load_qss(
-        "ui/styles/common.qss",
-        "ui/styles/orderbook_base.qss",
-        "ui/styles/orderbook_dark.qss",
+        # "ui/styles/common.qss",
+        # "ui/styles/orderbook_base.qss",
+        # "ui/styles/orderbook_dark.qss",
+        # "ui/styles/light_hts.qss"
+        "ui/styles/light_hts_classic.qss"
     )
 
     # 🔥 Qt + asyncio 통합 루프

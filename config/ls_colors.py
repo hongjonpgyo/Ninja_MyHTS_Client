@@ -2,7 +2,7 @@
 
 PRIMARY = "#1e90ff"
 DANGER = "#e74c3c"
-SUCCESS = "#2ecc71"
+SUCCESS = "#0051ff"
 BG = "#1f1f1f"
 TEXT = "#ffffff"
 
@@ -26,7 +26,7 @@ ORDERBOOK_COLORS = {
 
 RESERVATION_COLORS = {
     "예약": "#9e9e9e",   # gray
-    "익절": "#2ecc71",   # green
+    "익절": "#0051ff",   # green
     "손절": "#e74c3c",   # red
 }
 

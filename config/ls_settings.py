@@ -43,6 +43,7 @@ LS_SYMBOL_KR_MAP = {
     "HCEI": "항셍중국",
     "HCHH": "중국국채",
     "CUS": "위안",
+    "HMH": "미니항셍",
 
     # US
     "ES": "S&P",
