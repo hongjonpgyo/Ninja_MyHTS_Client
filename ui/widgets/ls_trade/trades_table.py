@@ -94,7 +94,7 @@ class TradesTable(QTableWidget):
 
         display_nm, full_nm = display_symbol_name(symbol)
         # 종목
-        self._set_item(row, self.COL_SYMBOL, display_nm, bold=True, align=Qt.AlignmentFlag.AlignCenter)
+        self._set_item(row, self.COL_SYMBOL, display_nm, bold=False, align=Qt.AlignmentFlag.AlignCenter)
 
         # 구분
         side_text = "매수" if side == "BUY" else "매도"
@@ -102,7 +102,7 @@ class TradesTable(QTableWidget):
         self._set_item(
             row, self.COL_SIDE, side_text,
             color=side_color,
-            bold=True,
+            bold=False,
             align=Qt.AlignmentFlag.AlignCenter
         )
 
@@ -184,10 +184,10 @@ class TradesTable(QTableWidget):
         if color:
             item.setForeground(color)
 
-        if bold:
-            font = QFont()
-            font.setBold(True)
-            item.setFont(font)
+        # if bold:
+        #     font = QFont()
+        #     font.setBold(True)
+        #     item.setFont(font)
 
         if col == self.COL_TIME:
             item.setFont(QFont("JetBrains Mono", 12))

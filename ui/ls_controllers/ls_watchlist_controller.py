@@ -15,11 +15,11 @@ class LSWatchListController:
     - 종목 선택용 리스트에 최적화
     """
 
-    COL_FAV = 0  # ⭐ 추가
-    COL_NAME = 1
-    COL_SYMBOL = 2
-    COL_PRICE = 3
-    COL_DIFF = 4
+    # COL_FAV = 0  # ⭐ 추가
+    COL_NAME = 0
+    COL_SYMBOL = 1
+    COL_PRICE = 2
+    COL_DIFF = 3
 
     def __init__(self, table, on_symbol_click=None, on_favorite_toggle=None, on_favorite_remove=None):
         self.table = table
@@ -28,7 +28,7 @@ class LSWatchListController:
         self.on_favorite_remove = on_favorite_remove
 
         self.bold_font = QFont()
-        self.bold_font.setBold(True)
+        # self.bold_font.setBold(True)
 
         self.favorites: set[str] = set()
 
@@ -42,7 +42,7 @@ class LSWatchListController:
     # Table init
     # -------------------------------------------------
     def _init_table(self):
-        headers = ["❤", "종목명", "코드", "현재가", "대비"]
+        headers = ["종목명", "코드", "현재가", "대비"]
         self._symbol_row_map = {}  # 🔥 핵심
 
         t = self.table
@@ -63,13 +63,13 @@ class LSWatchListController:
         header = t.horizontalHeader()
 
         # ⭐ 컬럼은 고정 20px
-        header.setSectionResizeMode(self.COL_FAV, QHeaderView.ResizeMode.Fixed)
-        t.setColumnWidth(self.COL_FAV, 28)
+        # header.setSectionResizeMode(self.COL_FAV, QHeaderView.ResizeMode.Fixed)
+        # t.setColumnWidth(self.COL_FAV, 28)
 
         # 나머지는 Stretch
         for col in range(t.columnCount()):
-            if col != self.COL_FAV:
-                header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
+           # if col != self.COL_FAV:
+            header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
 
     # -------------------------------------------------
     # Public
@@ -106,8 +106,8 @@ class LSWatchListController:
 
             if color:
                 item.setForeground(color)
-            if bold:
-                item.setFont(self.bold_font)
+            # if bold:
+            #     item.setFont(self.bold_font)
 
             self.table.setItem(r, col, item)
 
@@ -115,13 +115,13 @@ class LSWatchListController:
         trd_p = row.get("last_price")
         change_rate = row.get("change_rate") or row.get("diff")  # LS 등락률 %
 
-        # ⭐ 즐겨찾기
-        set_item(
-            self.COL_FAV,
-            "❤" if symbol in self.favorites else "",
-            Qt.AlignmentFlag.AlignCenter,
-            QColor("#FFD700") if symbol in self.favorites else QColor("#555555"),
-        )
+        # # ⭐ 즐겨찾기
+        # set_item(
+        #     self.COL_FAV,
+        #     "❤" if symbol in self.favorites else "",
+        #     Qt.AlignmentFlag.AlignCenter,
+        #     QColor("#FFD700") if symbol in self.favorites else QColor("#555555"),
+        # )
 
         # -----------------------
         # 종목명 / 코드
@@ -132,14 +132,14 @@ class LSWatchListController:
             self.COL_NAME,
             display_nm,
             Qt.AlignmentFlag.AlignLeft,
-            bold=True,
+            # bold=True,
         )
 
         set_item(
             self.COL_SYMBOL,
             symbol,
             Qt.AlignmentFlag.AlignLeft,
-            bold=True,
+            # bold=True,
             # QColor("#bbbbbb"),
         )
 
@@ -179,7 +179,7 @@ class LSWatchListController:
             f"{price:,.2f}",
             Qt.AlignmentFlag.AlignRight,
             color,
-            bold=True,
+            # bold=True,
         )
 
         set_item(
@@ -222,19 +222,19 @@ class LSWatchListController:
         if self.on_favorite_toggle:
             self.on_favorite_toggle(symbol)
 
-    def _update_favorite_icon(self, row: int, symbol: str):
-        fav_item = self.table.item(row, self.COL_FAV)
-        if not fav_item:
-            fav_item = QTableWidgetItem("")
-            fav_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row, self.COL_FAV, fav_item)
-
-        if symbol in self.favorites:
-            fav_item.setText("❤")
-            fav_item.setForeground(QColor("#FFD700"))
-        else:
-            fav_item.setText("")
-            fav_item.setForeground(QColor("#555555"))
+    # def _update_favorite_icon(self, row: int, symbol: str):
+    #     fav_item = self.table.item(row, self.COL_FAV)
+    #     if not fav_item:
+    #         fav_item = QTableWidgetItem("")
+    #         fav_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+    #         self.table.setItem(row, self.COL_FAV, fav_item)
+    #
+    #     if symbol in self.favorites:
+    #         fav_item.setText("❤")
+    #         fav_item.setForeground(QColor("#FFD700"))
+    #     else:
+    #         fav_item.setText("")
+    #         fav_item.setForeground(QColor("#555555"))
 
     def update_price(self, symbol: str, price: float, change: float, change_rate: float):
         """
@@ -280,13 +280,13 @@ class LSWatchListController:
 
             symbol = symbol_item.text()
 
-            fav_item = self.table.item(row, self.COL_FAV)
-            if fav_item is None:
-                fav_item = QTableWidgetItem()
-                fav_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                fav_item.setFlags(Qt.ItemFlag.ItemIsEnabled)  # 선택/편집 방지
-                self.table.setItem(row, self.COL_FAV, fav_item)
-
-            fav_item.setText("❤" if symbol in self.favorites else "")
+            # fav_item = self.table.item(row, self.COL_FAV)
+            # if fav_item is None:
+            #     fav_item = QTableWidgetItem()
+            #     fav_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            #     fav_item.setFlags(Qt.ItemFlag.ItemIsEnabled)  # 선택/편집 방지
+            #     self.table.setItem(row, self.COL_FAV, fav_item)
+            #
+            # fav_item.setText("❤" if symbol in self.favorites else "")
 
 

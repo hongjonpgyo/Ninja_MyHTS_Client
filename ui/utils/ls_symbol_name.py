@@ -15,6 +15,7 @@ LS_SYMBOL_KR_MAP = {
     # US
     "ES": "S&P",
     "NQ": "나스닥",
+    "MNQ": "나스닥미니",
     "YM": "다우",
 }
 

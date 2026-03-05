@@ -34,13 +34,13 @@ class FavoriteBar(QFrame):
         QPushButton {
             background-color: #2b2b2b;
             border: 1px solid #3a3a3a;
-            border-radius: 6px;
+            border-radius: 0px;
             padding: 4px 10px;
-            font-size: 12px;
+            font-size: 14px;
             color: #dddddd;
             min-height: 21px;
-            padding-top: 1px;
-            padding-bottom: 1px;
+            padding-top: 4px;
+            padding-bottom: 4px;
         }
         QPushButton:hover {
             background-color: #333333;

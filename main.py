@@ -22,6 +22,9 @@ def load_qss(*paths):
         with open(full_path, "r", encoding="utf-8") as f:
             qss += f.read() + "\n"
     app.setStyleSheet(qss)
+    app.setStyle("Fusion")
+    # app.setFont(QFont("Pretendard", 10))
+    app.setFont(QFont("Noto Sans KR", 10))
 
 def force_dark_palette(app: QApplication):
     palette = QPalette()
@@ -63,7 +66,7 @@ def main():
 
     force_dark_palette(app)
     # 2️⃣ 폰트
-    app.setFont(QFont("Pretendard", 12))
+    app.setFont(QFont("Malgun Gothic", 10))
 
     # 3️⃣ QSS
     load_qss(

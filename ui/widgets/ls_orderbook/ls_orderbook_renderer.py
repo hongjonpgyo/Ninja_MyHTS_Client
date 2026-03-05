@@ -28,8 +28,8 @@ class OrderBookRenderer(QObject):
         # Colors
         # -----------------------------
         self.bg_default = QColor("#ffffff")  # 기본 배경
-        self.bg_center = QColor("#f4f6f8")  # 현재가 라인
-        self.bg_ls = QColor("#e9f2ff")  # 현재 체결 라인
+        self.bg_center = QColor("#e9f2ff")  # 현재가 라인
+        self.bg_ls = QColor("#dff0ff")  # 현재 체결 라인
 
         self.tp_line = QColor(46, 204, 113)
         self.sl_line = QColor(231, 76, 60)
@@ -42,8 +42,8 @@ class OrderBookRenderer(QObject):
         self.bid_base = QColor(46, 204, 113)
 
         # --- Zone guide (좌/우 영역용, 아주 연함)
-        self.ask_zone = QColor(231, 76, 60, 14)
-        self.bid_zone = QColor(46, 204, 113, 14)
+        self.ask_zone = QColor(231, 76, 60, 35)
+        self.bid_zone = QColor(46, 204, 113, 35)
 
         # Text colors
         self.fg_normal = QColor("#000000")  # 🔥 가격 기본 검정
@@ -105,7 +105,7 @@ class OrderBookRenderer(QObject):
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setMouseTracking(True)
-        self.table.setShowGrid(False)
+        self.table.setShowGrid(True)
         self.table.setFrameShape(QTableWidget.Shape.NoFrame)
         self.table.setLineWidth(0)
 

@@ -48,6 +48,7 @@ LS_SYMBOL_KR_MAP = {
     # US
     "ES": "S&P",
     "NQ": "나스닥",
+    "MNQ": "마이크로",
     "YM": "다우",
 
     # FX

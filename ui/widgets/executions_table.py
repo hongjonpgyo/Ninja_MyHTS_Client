@@ -35,25 +35,25 @@ class ExecutionsTable(QtWidgets.QTableWidget):
             header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
         header.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # 스타일(원하는 톤으로 조절 가능)
-        self.setStyleSheet("""
-        QTableWidget {
-            background-color: #1f1f1f;
-            color: #e0e0e0;
-            font-size: 12px;
-        }
-        QHeaderView::section {
-            background-color: #2b2b2b;
-            color: #cccccc;
-            font-size: 11px;
-            padding: 6px;
-            border: none;
-        }
-        QTableWidget::item:selected {
-            background-color: #0a46c7;
-            color: white;
-        }
-        """)
+        # # 스타일(원하는 톤으로 조절 가능)
+        # self.setStyleSheet("""
+        # QTableWidget {
+        #     background-color: #1f1f1f;
+        #     color: #e0e0e0;
+        #     font-size: 12px;
+        # }
+        # QHeaderView::section {
+        #     background-color: #2b2b2b;
+        #     color: #cccccc;
+        #     font-size: 11px;
+        #     padding: 6px;
+        #     border: none;
+        # }
+        # QTableWidget::item:selected {
+        #     background-color: #0a46c7;
+        #     color: white;
+        # }
+        # """)
 
         # 최근 row 수 tracking(옵션)
         self.last_row_count = 0

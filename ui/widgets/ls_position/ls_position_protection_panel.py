@@ -73,7 +73,7 @@ class LSPositionProtectionPanel(QWidget):
         qty_row.setSpacing(6)
 
         lbl_qty_title = QLabel("수량")
-        lbl_qty_title.setFont(self._bold_font(10))
+        # lbl_qty_title.setFont(self._bold_font(10))
 
         qty_row.addWidget(lbl_qty_title)
         qty_row.addSpacing(10)
@@ -102,7 +102,7 @@ class LSPositionProtectionPanel(QWidget):
         tp_row = QHBoxLayout()
 
         self.chk_tp = QCheckBox("익절 (TP)")
-        self.chk_tp.setStyleSheet("color:#0051FF; font-weight:bold;")
+        # self.chk_tp.setStyleSheet("color:#0051FF; font-weight:bold;")
 
         self.sp_tp_ticks = QSpinBox()
         self.sp_tp_ticks.setRange(0, 999)
@@ -126,7 +126,7 @@ class LSPositionProtectionPanel(QWidget):
         sl_row = QHBoxLayout()
 
         self.chk_sl = QCheckBox("손절 (SL)")
-        self.chk_sl.setStyleSheet("color:#e74c3c; font-weight:bold;")
+        # self.chk_sl.setStyleSheet("color:#e74c3c; font-weight:bold;")
 
         self.sp_sl_ticks = QSpinBox()
         self.sp_sl_ticks.setRange(0, 999)
@@ -154,7 +154,7 @@ class LSPositionProtectionPanel(QWidget):
         action_bar.setSpacing(12)
 
         self.lbl_base_price = QLabel("기준가: -")
-        self.lbl_base_price.setFont(self._bold_font(10))
+        # self.lbl_base_price.setFont(self._bold_font(10))
         self.lbl_base_price.setStyleSheet("color:#e0e0e0;")
 
         self.btn_cancel = QPushButton("취소")
@@ -479,7 +479,7 @@ class LSPositionProtectionPanel(QWidget):
 
     def _info_label(self, text):
         lbl = QLabel(text)
-        lbl.setFont(self._bold_font(10))
+        # lbl.setFont(self._bold_font(10))
         return lbl
 
     def _bold_font(self, size):

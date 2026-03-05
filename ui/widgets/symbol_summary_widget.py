@@ -43,13 +43,13 @@ class SymbolSummaryWidget(QFrame):
         # self._apply_style()
 
         # 🔥 QSS 이후에도 고정폭 폰트 재적용 (안전장치)
-        mono = QFont()
-        mono.setStyleHint(QFont.StyleHint.Monospace)
-        mono.setFamily("Menlo")
-        mono.setPointSize(11)
+        # mono = QFont()
+        # mono.setStyleHint(QFont.StyleHint.Monospace)
+        # mono.setFamily("Menlo")
+        # mono.setPointSize(11)
 
-        for key in ("전일", "시가", "저가", "고가", "틱가치"):
-            self.labels[key].setFont(mono)
+        # for key in ("전일", "시가", "저가", "고가", "틱가치"):
+            # self.labels[key].setFont(mono)
 
     def _create_row(self, grid: QGridLayout, row: int, left: str, right: str):
         key_l, val_l = self._create_pair(left)

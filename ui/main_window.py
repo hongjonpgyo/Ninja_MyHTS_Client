@@ -2,7 +2,7 @@
 import asyncio
 from datetime import datetime
 
-from PyQt6.QtGui import QAction, QKeySequence, QShortcut
+from PyQt6.QtGui import QAction, QKeySequence, QShortcut, QFont
 from PyQt6.QtWidgets import QMainWindow, QSizePolicy, QWidget, QHBoxLayout, QPushButton, QMessageBox, QCheckBox
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, Qt
@@ -63,6 +63,7 @@ from config.ls_settings import LS_BASE_URL
 from ui.workers.price_stream_worker import PriceStreamWorker
 
 FIXED_WIDTH = 1490
+FIXED_HIGHT = 1150
 PRICE_COL = 4
 
 
@@ -77,6 +78,7 @@ class MainWindow(QMainWindow):
         # UI Load
         # -------------------------
         loadUi(resource_path("ui/main_window_20260123.ui"), self)
+        self.setFixedHeight(FIXED_HIGHT)
         self.setFixedWidth(FIXED_WIDTH)
 
         # -------------------------
@@ -122,6 +124,7 @@ class MainWindow(QMainWindow):
         self.clock_timer.start(1000)
 
         self.labelClock.setFixedWidth(125)
+        self.labelClock.setFont(QFont("Pretendard", 18))
         self.labelClock.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.chkAutoCenter = QCheckBox("고정")

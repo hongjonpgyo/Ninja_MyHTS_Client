@@ -41,7 +41,7 @@ class ReservationWidget(QWidget):
         self._row_reservation_map: dict[int, int] = {}
 
         self.bold_font = QFont()
-        self.bold_font.setBold(True)
+        # self.bold_font.setBold(True)
 
         self._setup_table()
 
@@ -146,7 +146,7 @@ class ReservationWidget(QWidget):
 
         it = QTableWidgetItem(t)
         it.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        it.setFont(self.bold_font)
+        # it.setFont(self.bold_font)
 
         if t == "익절":
             it.setForeground(QColor("#2ecc71"))
@@ -160,7 +160,7 @@ class ReservationWidget(QWidget):
     def _side_item(self, side: str):
         it = QTableWidgetItem("매수" if side == "BUY" else "매도")
         it.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        it.setFont(self.bold_font)
+        # it.setFont(self.bold_font)
 
         if side == "BUY":
             it.setForeground(QColor("#0051FF"))
@@ -205,8 +205,8 @@ class ReservationWidget(QWidget):
     def _center_item(self, text: str, bold: bool = False):
         it = QTableWidgetItem(text)
         it.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        if bold:
-            it.setFont(self.bold_font)
+        # if bold:
+        #     it.setFont(self.bold_font)
         return it
 
     # ==================================================

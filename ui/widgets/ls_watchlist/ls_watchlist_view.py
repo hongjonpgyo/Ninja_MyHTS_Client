@@ -20,7 +20,7 @@ class LSWatchListView(QTableView):
         super().setModel(model)
 
         # 컬럼 너비
-        self.setColumnWidth(model.COL_FAV, 40)
+        # self.setColumnWidth(model.COL_FAV, 40)
         self.setColumnWidth(model.COL_NAME, 120)
         self.setColumnWidth(model.COL_CODE, 80)
         self.setColumnWidth(model.COL_PRICE, 100)

@@ -8,7 +8,6 @@
 QWidget {
     background-color: #e1e4e8;
     color: #111111;
-    font-family: "Pretendard";
     font-size: 10.5pt;
 }
 
@@ -30,7 +29,7 @@ QFrame#TopBar {
    ========================= */
 QLabel {
     color: #111111;
-    font-size: 13px;
+    font-size: 14px;
     border: 0px solid #9aa3ad;
 }
 
