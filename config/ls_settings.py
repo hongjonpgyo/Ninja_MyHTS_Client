@@ -2,9 +2,9 @@
 
 # REST_URL = "http://127.0.0.1:9000"
 # WS_URL = "ws://127.0.0.1:9000/ws"
-LS_BASE_URL = "http://127.0.0.1:9001"
+# LS_BASE_URL = "http://127.0.0.1:9001"
 # LS_BASE_URL = "http://54.206.108.116"
-# LS_BASE_URL = "http://54.199.123.198"
+LS_BASE_URL = "http://54.199.123.198"
 
 ORDERBOOK_DEPTH = 100
 DEFAULT_SYMBOLS = [

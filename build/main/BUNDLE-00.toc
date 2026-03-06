@@ -1,3 +1,0 @@
-([('main',
-   '/Users/hongjongpyo/PycharmProjects/Ninja_MyHTS_Client_1203/dist/main',
-   'EXECUTABLE')],)

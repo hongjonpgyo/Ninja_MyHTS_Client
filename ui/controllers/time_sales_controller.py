@@ -91,18 +91,18 @@ class TimeSalesController:
         # -------------------------
         # 색상 설정
         # -------------------------
-        # if side == "BUY":
-        #     # fg = QColor("#0051ff")
-        #     flash_bg = QColor(46, 204, 113, 60)
-        # else:
-        #     # fg = QColor("#e74c3c")
-        #     flash_bg = QColor(231, 76, 60, 60)
+        if side == "BUY":
+            fg = QColor("#0051ff")
+            flash_bg = QColor(46, 204, 113, 60)
+        else:
+            fg = QColor("#e74c3c")
+            flash_bg = QColor(231, 76, 60, 60)
 
         # item_price.setForeground(fg)
         item_price.setFont(self.bold_font)
 
-        # item_side.setForeground(fg)
-        item_side.setFont(self.bold_font)
+        item_side.setForeground(fg)
+        # item_side.setFont(self.bold_font)
 
         # item_qty.setForeground(QColor("#dddddd"))
 

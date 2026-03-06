@@ -28,7 +28,7 @@ class OrderBookRenderer(QObject):
         # Colors
         # -----------------------------
         self.bg_default = QColor("#ffffff")  # 기본 배경
-        self.bg_center = QColor("#e9f2ff")  # 현재가 라인
+        self.bg_center = QColor("#dfeeff")
         self.bg_ls = QColor("#dff0ff")  # 현재 체결 라인
 
         self.tp_line = QColor(46, 204, 113)
@@ -39,32 +39,33 @@ class OrderBookRenderer(QObject):
 
         # Depth base colors
         self.ask_base = QColor(231, 76, 60)
-        self.bid_base = QColor(46, 204, 113)
+        self.bid_base = QColor(52, 152, 219)
 
         # --- Zone guide (좌/우 영역용, 아주 연함)
-        self.ask_zone = QColor(231, 76, 60, 35)
-        self.bid_zone = QColor(46, 204, 113, 35)
+        self.ask_zone = QColor(231, 76, 60, 20)
+        self.bid_zone = QColor(52, 152, 219, 20)
 
         # Text colors
         self.fg_normal = QColor("#000000")  # 🔥 가격 기본 검정
         self.fg_ls = QColor("#000000")  # 🔥 현재가도 검정
 
         # Tag colors (my orders)
-        self.fg_my_sell = QColor("#ffd54f")
-        self.fg_my_buy = QColor("#ffd54f")
+        self.fg_my_sell = QColor("#000000")
+        self.fg_my_buy = QColor("#000000")
 
         # MIT dots
-        self.fg_mit_sell = QColor("#ff7675")
-        self.fg_mit_buy = QColor("#74b9ff")
+        self.fg_mit_sell = QColor("#ff4757")
+        self.fg_mit_buy = QColor("#1e90ff")
 
         # -----------------------------
         # Fonts
         # -----------------------------
         self.font_price = QFont()
         self.font_price.setBold(True)
+        self.font_price.setPointSize(12)
 
         self.font_tag = QFont()
-        self.font_tag.setPointSize(9)
+        self.font_tag.setPointSize(12)
         self.font_tag.setBold(True)
 
         self.font_qty = QFont()
@@ -101,8 +102,8 @@ class OrderBookRenderer(QObject):
             "잔량", "건수", "매수", "MIT"
         ])
 
-        self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setMouseTracking(True)
         self.table.setShowGrid(True)
@@ -129,22 +130,30 @@ class OrderBookRenderer(QObject):
     # Render
     # =================================================
     def render(self, rows: List[OrderBookRow]):
-        self._last_rows = rows
-        self.table.setRowCount(len(rows))
+        self.table.setUpdatesEnabled(False)
+        try:
+            self._last_rows = rows
 
-        if not rows:
-            return
+            if not rows:
+                return
 
-        max_qty = max([1] + [r.ask_qty for r in rows] + [r.bid_qty for r in rows])
+            max_qty = max([1] + [r.ask_qty for r in rows] + [r.bid_qty for r in rows])
 
-        for r, row in enumerate(rows):
-            self._render_row(r, row, max_qty)
+            for r, row in enumerate(rows):
+                self._render_row(r, row, max_qty)
+
+            self.table.clearSelection()
+            self.table.setCurrentCell(-1, -1)
+
+        finally:
+            self.table.setUpdatesEnabled(True)
+            self.table.viewport().update()
 
     # =================================================
     # FX
     # =================================================
     def pulse_center(self, row_idx: int, ms: int = 140):
-        self._tint_row(row_idx, QColor("#355f7a"))
+        # self._tint_row(row_idx, QColor("#355f7a"))
         QTimer.singleShot(ms, self._restore_all)
 
     def flash_row(self, row_idx: int, side: Optional[str] = None, ms: int = 180):
@@ -160,6 +169,7 @@ class OrderBookRenderer(QObject):
 
     # OrderBookRenderer.py
     def nudge(self, dy: int, ms: int = 1000):
+        return
         """
         dy > 0 : 가격 상승 느낌 (살짝 아래로 눌렸다가 복원)
         dy < 0 : 가격 하락 느낌 (살짝 위로 눌렸다가 복원)
@@ -189,9 +199,36 @@ class OrderBookRenderer(QObject):
         if obj == self.table.viewport() and event.type() == event.Type.MouseMove:
             row = self.table.rowAt(event.pos().y())
             if row != self.hover_row:
+                prev = self.hover_row
                 self.hover_row = row
-                self._restore_all()  # 🔥 다시 render
+
+                if prev is not None and 0 <= prev < self.table.rowCount():
+                    self._refresh_price_cell(prev)
+
+                if row is not None and 0 <= row < self.table.rowCount():
+                    self._refresh_price_cell(row)
+
         return False
+
+    def _refresh_price_cell(self, r: int):
+        if not self._last_rows or r >= len(self._last_rows):
+            return
+
+        row = self._last_rows[r]
+        price_it = self._get_item(r, self.COL_PRICE)
+
+        price_text = f"{row.price:,.2f}"
+        if row.is_tp:
+            price_it.setForeground(self.tp_line)
+            price_text += "  TP"
+        elif row.is_sl:
+            price_it.setForeground(self.sl_line)
+            price_text += "  SL"
+        else:
+            price_it.setForeground(self.fg_ls if row.is_ls_price else self.fg_normal)
+
+        price_it.setText(price_text)
+        price_it.setFont(self.font_qty if self.hover_row == r else self.font_price)
 
     # =================================================
     # Row render
@@ -230,10 +267,10 @@ class OrderBookRenderer(QObject):
             else:  # SHORT
                 bg = self.tp_preview_bg if diff < 0 else self.sl_preview_bg
 
-        # self._paint_row_bg(r, bg)
-        self._paint_price_row_bg(r, bg)
         # 좌/우 영역 가이드 (항상 동일)
+        self._paint_price_row_bg(r, bg)
         self._paint_side_zone(r)
+
 
         # -----------------
         # PRICE
@@ -357,12 +394,13 @@ class OrderBookRenderer(QObject):
         self._get_item(r, self.COL_PRICE).setBackground(QBrush(color))
 
     def _paint_side_zone(self, r: int):
-        # 🔴 매도 영역 (MIT + 매도)
+
+        # 🔴 매도 영역
         for c in (self.COL_MIT_SELL, self.COL_SELL):
             it = self._get_item(r, c)
             it.setBackground(QBrush(self.ask_zone))
 
-        # 🟢 매수 영역 (매수 + MIT)
+        # 🔵 매수 영역
         for c in (self.COL_BUY, self.COL_MIT_BUY):
             it = self._get_item(r, c)
             it.setBackground(QBrush(self.bid_zone))
@@ -388,7 +426,7 @@ class OrderBookRenderer(QObject):
             return
 
         ratio = min(qty / max_qty, 1.0)
-        alpha = int(18 + ratio * 55)  # 연하게 (더 연하게 하고 싶으면 12~45로)
+        alpha = int(40 + ratio * 140)
         it.setBackground(QBrush(QColor(base.red(), base.green(), base.blue(), alpha)))
 
     def _reset_cell_bg_if_empty(self, r: int, c: int, value: int, base_bg: QColor):

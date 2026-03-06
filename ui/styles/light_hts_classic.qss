@@ -83,27 +83,26 @@ QPushButton#sellButton {
    TABLE
    ========================= */
 QTableWidget {
-    background-color: #f7f7f7;
+    /*background-color: #f7f7f7;*/
     alternate-background-color: #eeeeee;
-    gridline-color: #d0d5db;   /* 🔥 살짝 연하게 */
+    gridline-color: #d0d6dc;
     selection-background-color: #cfd6df;
     selection-color: #000000;
     border: 1px solid #9aa3ad;
 }
 
-QTableWidget::item {
-    border: none;
-}
+
 
 QTableWidget::item:selected {
-    background-color: #cfd6df;
+    background: transparent;
 }
 
 QHeaderView::section {
-    border: 1px solid #d8d8d8;
+    background: #f2f2f2;
+    /*border: 1px solid #d8d8d8;*/
+    border: 1px solid #dcdcdc;
     border-top: none;
     border-left: none;
-    background: #f4f6f8;
     padding: 4px;
     font-weight: 600;
 }

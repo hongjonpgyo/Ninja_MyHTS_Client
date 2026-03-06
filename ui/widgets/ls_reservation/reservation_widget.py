@@ -175,7 +175,7 @@ class ReservationWidget(QWidget):
         price = f'{r["trigger_price"]:,.0f}'
         it = QTableWidgetItem(f"{op} {price}")
         it.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        it.setForeground(QColor("#d4ac0d"))  # 톤 다운
+        # it.setForeground(QColor("#d4ac0d"))  # 톤 다운
         return it
 
     def _order_item(self, r):

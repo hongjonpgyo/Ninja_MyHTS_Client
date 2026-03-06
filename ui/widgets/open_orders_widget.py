@@ -237,7 +237,7 @@ class OpenOrdersWidget(QtWidgets.QWidget):
             # BUY / SELL 컬러
             side_color = QtGui.QColor("#0051ff" if side == "BUY" else "#e74c3c")
             side_item.setForeground(side_color)
-            price_item.setForeground(QtGui.QColor("#f1c40f"))
+            # price_item.setForeground(QtGui.QColor("#f1c40f"))
 
             # ✅ 현재 심볼 강조
             if current_symbol and symbol == current_symbol:

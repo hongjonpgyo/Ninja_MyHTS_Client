@@ -31,6 +31,8 @@ class LSWatchListController:
         # self.bold_font.setBold(True)
 
         self.favorites: set[str] = set()
+        self._price_items: dict[str, QTableWidgetItem] = {}
+        self._diff_items: dict[str, QTableWidgetItem] = {}
 
         self._init_table()
         # self._apply_style()
@@ -76,11 +78,13 @@ class LSWatchListController:
     # -------------------------------------------------
     def load_rows(self, rows: list[dict]):
         self.table.setRowCount(0)
+        self._symbol_row_map.clear()
+        self._price_items.clear()
+        self._diff_items.clear()
 
         for row in rows:
-            r = self.table.rowCount()
             self._append_row(row)
-            self._symbol_row_map[row["symbol"]] = r
+            self._symbol_row_map[row["symbol"]] = self.table.rowCount() - 1
 
     def select_symbol(self, symbol: str):
         if symbol not in self._symbol_row_map:
@@ -100,94 +104,53 @@ class LSWatchListController:
         self.table.insertRow(r)
         self.table.setProperty(f"_row_{r}", row)
 
-        def set_item(col, text, align, color=None, bold=False):
+        def make_item(text, align, color=None):
             item = QTableWidgetItem(text)
-            item.setTextAlignment(int(align | Qt.AlignmentFlag.AlignLeft))
-
+            item.setTextAlignment(int(align | Qt.AlignmentFlag.AlignVCenter))
             if color:
                 item.setForeground(color)
-            # if bold:
-            #     item.setFont(self.bold_font)
-
-            self.table.setItem(r, col, item)
+            return item
 
         symbol = row.get("symbol", "")
         trd_p = row.get("last_price")
-        change_rate = row.get("change_rate") or row.get("diff")  # LS 등락률 %
+        change_rate = row.get("change_rate") or row.get("diff")
 
-        # # ⭐ 즐겨찾기
-        # set_item(
-        #     self.COL_FAV,
-        #     "❤" if symbol in self.favorites else "",
-        #     Qt.AlignmentFlag.AlignCenter,
-        #     QColor("#FFD700") if symbol in self.favorites else QColor("#555555"),
-        # )
-
-        # -----------------------
-        # 종목명 / 코드
-        # -----------------------
         display_nm, _ = display_symbol_name(symbol)
 
-        set_item(
-            self.COL_NAME,
-            display_nm,
-            Qt.AlignmentFlag.AlignLeft,
-            # bold=True,
-        )
+        name_item = make_item(display_nm, Qt.AlignmentFlag.AlignLeft)
+        symbol_item = make_item(symbol, Qt.AlignmentFlag.AlignLeft)
+        price_item = make_item("--", Qt.AlignmentFlag.AlignRight, QColor("#777777"))
+        diff_item = make_item("―", Qt.AlignmentFlag.AlignCenter, QColor("#777777"))
 
-        set_item(
-            self.COL_SYMBOL,
-            symbol,
-            Qt.AlignmentFlag.AlignLeft,
-            # bold=True,
-            # QColor("#bbbbbb"),
-        )
+        self.table.setItem(r, self.COL_NAME, name_item)
+        self.table.setItem(r, self.COL_SYMBOL, symbol_item)
+        self.table.setItem(r, self.COL_PRICE, price_item)
+        self.table.setItem(r, self.COL_DIFF, diff_item)
 
-        # -----------------------
-        # 현재가 / 대비
-        # -----------------------
+        self._price_items[symbol] = price_item
+        self._diff_items[symbol] = diff_item
+
         if not trd_p:
-            set_item(
-                self.COL_PRICE,
-                "--",
-                Qt.AlignmentFlag.AlignRight,
-                QColor("#777777"),
-            )
-            set_item(
-                self.COL_DIFF,
-                "―",
-                Qt.AlignmentFlag.AlignCenter,
-                QColor("#777777"),
-            )
             return
 
         price = float(trd_p)
         rate = float(change_rate or 0)
 
         if rate > 0:
-            color = QColor("#e74c3c")  # 상승
+            color = QColor("#e74c3c")
             arrow = "▲"
         elif rate < 0:
-            color = QColor("#3498db")  # 하락
+            color = QColor("#3498db")
             arrow = "▼"
         else:
             color = QColor("#aaaaaa")
             arrow = "―"
 
-        set_item(
-            self.COL_PRICE,
-            f"{price:,.2f}",
-            Qt.AlignmentFlag.AlignRight,
-            color,
-            # bold=True,
-        )
+        price_item.setText(f"{price:,.2f}")
+        price_item.setForeground(color)
 
-        set_item(
-            self.COL_DIFF,
-            f"{arrow} {abs(rate):.2f}%",
-            Qt.AlignmentFlag.AlignCenter,
-            color,
-        )
+        diff_item.setText(f"{arrow} {abs(rate):.2f}%")
+        diff_item.setForeground(color)
 
     # -------------------------------------------------
     # Click handling
@@ -246,7 +209,14 @@ class LSWatchListController:
         row = self._symbol_row_map[symbol]
         self._update_price_cell(row, price, change, change_rate)
 
-    def _update_price_cell(self, row: int, price: float, change: float, change_rate: float):
+    def update_price(self, symbol: str, price: float, change: float, change_rate: float):
+        symbol = (symbol or "").strip().upper()
+
+        price_item = self._price_items.get(symbol)
+        diff_item = self._diff_items.get(symbol)
+
+        if not price_item or not diff_item:
+            return
 
         if change_rate > 0:
             color = QColor("#e74c3c")
@@ -258,13 +228,39 @@ class LSWatchListController:
             color = QColor("#aaaaaa")
             arrow = "―"
 
-        self.table.item(row, self.COL_PRICE).setText(f"{price:,.2f}")
-        self.table.item(row, self.COL_PRICE).setForeground(color)
+        price_text = f"{price:,.2f}"
+        diff_text = f"{arrow} {abs(change_rate):.2f}%"
 
-        self.table.item(row, self.COL_DIFF).setText(
-            f"{arrow} {abs(change_rate):.2f}%"
-        )
-        self.table.item(row, self.COL_DIFF).setForeground(color)
+        if price_item.text() != price_text:
+            price_item.setText(price_text)
+
+        if diff_item.text() != diff_text:
+            diff_item.setText(diff_text)
+
+        if price_item.foreground().color() != color:
+            price_item.setForeground(color)
+
+        if diff_item.foreground().color() != color:
+            diff_item.setForeground(color)
+
+    def batch_update_prices(self, updates: dict[str, dict]):
+        if not updates:
+            return
+
+        self.table.setUpdatesEnabled(False)
+        try:
+            for symbol, event in updates.items():
+                price = event.get("price")
+                change = event.get("change")
+                change_rate = event.get("change_rate")
+
+                if price is None or change_rate is None:
+                    continue
+
+                self.update_price(symbol, price, change, change_rate)
+        finally:
+            self.table.setUpdatesEnabled(True)
+            self.table.viewport().update()
 
     def set_favorites(self, favorites: set[str]):
         """

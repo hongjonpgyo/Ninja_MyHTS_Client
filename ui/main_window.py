@@ -34,9 +34,11 @@ from ui.controllers.background_controller import BackgroundController
 from ui.controllers.time_sales_controller import TimeSalesController
 from ui.controllers.execution_strength import ExecutionStrength
 from ui.ls_controllers.ls_orderbook_controller import OrderBookController
+from ui.ls_controllers.ls_orderbook_tick_engine import LSOrderBookTickEngine
 from ui.ls_controllers.ls_reservation_controller import ReservationController
 from ui.ls_controllers.ls_watchlist_controller import LSWatchListController
 from ui.ls_controllers.ls_order_controller import OrderController
+from ui.ls_controllers.ls_watchlist_tick_engine import LSWatchListTickEngine
 from ui.settings.trade_setting import UserTradeSetting
 from ui.utils.path_utils import resource_path
 
@@ -151,6 +153,13 @@ class MainWindow(QMainWindow):
             api_client=self.ls_api,
             view=self.orderbook,
         )
+        self.orderbook_tick_engine = LSOrderBookTickEngine(
+            controller=self.orderbook_controller,
+            interval_ms=40,
+            parent=self
+        )
+
+        self.orderbook_tick_engine.start()
 
         self.price_controller = PriceController(top_bar=self.topBar, watchlist_controller=self.ls_watchlist_controller)
         self.bg_controller = BackgroundController(self, interval=0.5)
@@ -272,6 +281,13 @@ class MainWindow(QMainWindow):
             on_favorite_toggle=self.on_favorite_toggled,
             on_favorite_remove=self.on_favorite_remove
         )
+        self.watchlist_tick_engine = LSWatchListTickEngine(
+            controller=self.ls_watchlist_controller,
+            interval_ms=50,
+            parent=self,
+        )
+        self.watchlist_tick_engine.start()
+
         self.tableWatchlist.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
@@ -514,17 +530,19 @@ class MainWindow(QMainWindow):
     def on_price_tick(self, event: dict):
         symbol = event.get("symbol")
         price = event.get("price")
+        change = event.get("change")
+        change_rate = event.get("change_rate")
 
-        # 1️⃣ WatchList
-        # if hasattr(self, "ls_watchlist_controller"):
-        #     self.ls_watchlist_controller.update_price(symbol, price)
+        if hasattr(self, "watchlist_tick_engine"):
+            self.watchlist_tick_engine.enqueue_tick(
+                symbol=symbol,
+                price=price,
+                change=change,
+                change_rate=change_rate,
+            )
 
-        # 2️⃣ OrderBook 현재가만 갱신
-        if (
-                self.orderbook_controller.current_symbol == symbol
-                and price is not None
-        ):
-            self.orderbook_controller.view.update_ls_price(price)
+        if hasattr(self, "orderbook_tick_engine") and price is not None:
+            self.orderbook_tick_engine.enqueue_tick(symbol, price)
 
     def on_close_current_symbol(self):
         self.enqueue_async(self._close_current_symbol_worker())
@@ -881,6 +899,9 @@ class MainWindow(QMainWindow):
         await self.api.cancel_reservations(scope="SYMBOL", symbol=symbol)
 
     def on_execution_received(self, event: dict):
+        if not self.running:
+            return
+
         print("[EXEC EVT", event)
 
         exec_type = (event.get("exec_type") or "").upper()
@@ -1062,6 +1083,14 @@ class MainWindow(QMainWindow):
             # if self.trade_ws:
             #     await self.trade_ws.stop()
             self._queue.put_nowait(None)
+
+            if hasattr(self, "watchlist_tick_engine"):
+                self.watchlist_tick_engine.stop()
+                self.watchlist_tick_engine.clear()
+
+            if hasattr(self, "orderbook_tick_engine"):
+                self.orderbook_tick_engine.stop()
+                self.orderbook_tick_engine.clear()
         finally:
             if self._worker_task:
                 self._worker_task.cancel()

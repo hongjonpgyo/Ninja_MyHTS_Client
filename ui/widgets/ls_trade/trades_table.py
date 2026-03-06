@@ -35,7 +35,7 @@ class TradesTable(QTableWidget):
 
     def _init_style(self):
         font = QFont()
-        font.setPointSize(10)  # 🔥 원하는 크기 (9~11 추천)
+        # font.setPointSize(10)  # 🔥 원하는 크기 (9~11 추천)
         font.setBold(False)
 
         self.setFont(font)
@@ -45,14 +45,6 @@ class TradesTable(QTableWidget):
 
         self.verticalHeader().setVisible(False)
 
-        self.setStyleSheet("""
-                QTableWidget {
-                    font-size: 10pt;
-                }
-                QHeaderView::section {
-                    font-size: 10pt;
-                }
-            """)
 
         self.setShowGrid(False)
 
@@ -88,7 +80,7 @@ class TradesTable(QTableWidget):
         self._set_item(
             row,
             self.COL_TIME,
-            dt.strftime("%Y-%m-%d %H:%M:%S") if dt else "--",
+            dt.strftime("%m/%d %H:%M:%S") if dt else "--",
             align=Qt.AlignmentFlag.AlignCenter
         )
 
@@ -116,7 +108,7 @@ class TradesTable(QTableWidget):
         self._set_item(
             row, self.COL_PRICE,
             f"{price:,.0f}",
-            color=QColor("#f1c40f"),
+            color=QColor("#000000"),
             align=Qt.AlignmentFlag.AlignRight
         )
 
@@ -189,8 +181,8 @@ class TradesTable(QTableWidget):
         #     font.setBold(True)
         #     item.setFont(font)
 
-        if col == self.COL_TIME:
-            item.setFont(QFont("JetBrains Mono", 12))
+        # if col == self.COL_TIME:
+        #     item.setFont(QFont("JetBrains Mono", 11))
 
         if align:
             item.setTextAlignment(align | Qt.AlignmentFlag.AlignVCenter)

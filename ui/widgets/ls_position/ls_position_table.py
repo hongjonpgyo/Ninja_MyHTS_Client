@@ -137,10 +137,15 @@ class LSPositionsTable(QTableWidget):
             if prev.get(key) == new.get(key):
                 continue
 
+            if key == "symbol":
+                display_nm, _ = display_symbol_name(new.get("symbol"))
+                self._set_item(r, c, display_nm)
+                continue
+
             # 🔥 Side 한글 변환 (UI 전용)
             if key == "side":
                 side = new.get("side")
-                side_kr = "롱" if side == "LONG" else "숏" if side == "SHORT" else ""
+                side_kr = "매수" if side == "LONG" else "매도" if side == "SHORT" else ""
                 self._set_item(r, c, side_kr)
                 continue
 
@@ -239,7 +244,15 @@ class LSPositionsTable(QTableWidget):
         else:
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        text = str(value)
         item.setText(str(value))
+        # 🔥 매수 / 매도 색상
+        if text == "매수":
+            item.setForeground(QColor("#1e90ff"))  # 파랑
+        elif text == "매도":
+            item.setForeground(QColor("#e74c3c"))  # 빨강
+        else:
+            item.setForeground(QColor("#000000"))
 
     # ----------------------------------------------------------
     # 🔥 스타일 적용 (핵심)
@@ -249,48 +262,48 @@ class LSPositionsTable(QTableWidget):
         pnl = float(row_data.get("unrealized_pnl", 0))
 
         # --- 기본 행 배경 ---
-        for c in range(self.columnCount()):
-            item = self.item(row, c)
-            if item:
-                item.setBackground(QColor("#232323"))
-                item.setForeground(QColor("#e0e0e0"))
-                item.setFont(QFont())
+        # for c in range(self.columnCount()):
+        #     item = self.item(row, c)
+        #     if item:
+        #         item.setBackground(QColor("#232323"))
+        #         item.setForeground(QColor("#e0e0e0"))
+        #         item.setFont(QFont())
 
-        # --- Symbol ---
-        symbol_item = self.item(row, 0)
-        if symbol_item:
-            symbol_item.setFont(self.bold_font)
-            symbol_item.setForeground(QColor("#ffffff"))
+        # # --- Symbol ---
+        # symbol_item = self.item(row, 0)
+        # if symbol_item:
+        #     symbol_item.setFont(self.bold_font)
+        #     symbol_item.setForeground(QColor("#ffffff"))
 
         # --- Side ---
         side_item = self.item(row, 1)
         if side_item:
             if side == "LONG":
                 side_item.setForeground(QColor("#2ecc71"))
-                side_item.setBackground(QColor(46, 204, 113, 40))
+                # side_item.setBackground(QColor(46, 204, 113, 40))
             elif side == "SHORT":
                 side_item.setForeground(QColor("#e74c3c"))
-                side_item.setBackground(QColor(231, 76, 60, 40))
+                # side_item.setBackground(QColor(231, 76, 60, 40))
 
         # --- Qty ---
-        qty_item = self.item(row, 2)
-        if qty_item:
-            qty_item.setFont(self.bold_font)
-            qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        # qty_item = self.item(row, 2)
+        # if qty_item:
+        #     qty_item.setFont(self.bold_font)
+        #     qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
         # --- Entry / Liq ---
-        for col in (3, 5):
-            item = self.item(row, col)
-            if item:
-                item.setForeground(QColor("#aaaaaa"))
-
-        # --- PnL (주인공) ---
-        pnl_item = self.item(row, 4)
-        if pnl_item:
-            pnl_item.setFont(self.bold_font)
-            if pnl > 0:
-                pnl_item.setForeground(QColor("#2ecc71"))
-            elif pnl < 0:
-                pnl_item.setForeground(QColor("#e74c3c"))
-            else:
-                pnl_item.setForeground(QColor("#cccccc"))
+        # for col in (3, 5):
+        #     item = self.item(row, col)
+        #     if item:
+        #         item.setForeground(QColor("#aaaaaa"))
+        #
+        # # --- PnL (주인공) ---
+        # pnl_item = self.item(row, 4)
+        # if pnl_item:
+        #     pnl_item.setFont(self.bold_font)
+        #     if pnl > 0:
+        #         pnl_item.setForeground(QColor("#2ecc71"))
+        #     elif pnl < 0:
+        #         pnl_item.setForeground(QColor("#e74c3c"))
+        #     else:
+        #         pnl_item.setForeground(QColor("#cccccc"))
